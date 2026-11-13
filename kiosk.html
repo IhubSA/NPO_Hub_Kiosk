@@ -42,6 +42,8 @@
                       repeating-linear-gradient(115deg, rgba(255,255,255,.012) 0 2px, transparent 2px 26px); }
   .top { position:relative; display:flex; align-items:center; gap:16px; padding:20px 32px 8px; }
   .mark { width:52px; height:52px; border-radius:16px; background:rgba(255,255,255,.95); color:var(--brand); display:grid; place-items:center; font-weight:800; font-size:20px; letter-spacing:-.02em; flex:none; box-shadow:0 10px 30px -12px rgba(0,0,0,.45); }
+  .mark img, .bigmark img { width:100%; height:100%; object-fit:contain; padding:10%; border-radius:inherit; }
+  .welcome .bigmark.haslogo { width:150px; height:150px; border-radius:36px; }
   .top .names b { display:block; font-size:19px; font-weight:700; }
   .top .names span { font-size:14px; opacity:.75; }
   .top .sp { flex:1; }
@@ -234,6 +236,7 @@
   const initials = n => (n || 'H').split(/\s+/).filter(w => /^[A-Za-z]/.test(w) && !/^(of|the|and|community|hub)$/i.test(w)).slice(0, 2).map(w => w[0]).join('').toUpperCase() || 'H';
   const settings = () => (cfg && cfg.settings) || {};
   const regField = f => { const r = settings().reg_fields; return !r || r[f] !== false; };
+  const markInner = () => cfg && cfg.hub.logo ? `<img src="${esc(cfg.hub.logo)}" alt="${esc(cfg.hub.name)} logo" onerror="this.replaceWith(document.createTextNode('${esc(initials(cfg.hub.name)).replace(/'/g, '')}'))">` : esc(initials(cfg ? cfg.hub.name : ''));
   const fmtMobile = d => d.replace(/\D/g, '').slice(0, 10).replace(/^(\d{3})(\d{0,3})(\d{0,4}).*/, (m, a, b, c) => [a, b, c].filter(Boolean).join(' '));
 
   // ---------- chrome (top bar + footer) ----------
@@ -241,7 +244,7 @@
     const q = queue().length;
     const inner = opts.inner;
     $top.innerHTML = `
-      <div class="mark" id="logo">${esc(initials(cfg ? cfg.hub.name : ''))}</div>
+      <div class="mark" id="logo">${markInner()}</div>
       <div class="names"><b>${esc(cfg ? cfg.hub.name : 'Community Hub')}</b><span>${esc(cfg ? cfg.org.name : '')}</span></div>
       <div class="sp"></div>
       ${q ? `<span class="pill warn">${q} waiting to upload</span>` : ''}
@@ -306,7 +309,7 @@
     chrome();
     $app.innerHTML = `
       <div class="welcome">
-        <div class="bigmark">${esc(initials(cfg.hub.name))}</div>
+        <div class="bigmark${cfg.hub.logo ? ' haslogo' : ''}">${markInner()}</div>
         <h1>Welcome to ${esc(cfg.hub.name)}</h1>
         ${cfg.hub.welcome ? `<p class="msg">${esc(cfg.hub.welcome)}</p>` : ''}
         <div class="ask">What would you like to do today?</div>

@@ -142,6 +142,11 @@
   .report .period { color:var(--muted); margin:4px 0 16px; }
   .report .summary p { line-height:1.6; margin:0 0 8px; }
   .report h4 { margin:22px 0 8px; font-size:14px; }
+  .logoslot { width:76px; height:76px; border-radius:18px; border:2px dashed var(--line); background:#fafcfb; display:grid; place-items:center; overflow:hidden; flex:none; }
+  .logoslot img { width:100%; height:100%; object-fit:contain; padding:8%; background:#fff; }
+  .logoslot span { font-weight:800; font-size:24px; color:var(--brand); }
+  .logoslot.sm { width:44px; height:44px; border-radius:12px; border-style:solid; border-width:2px; }
+  .logoslot.sm span { font-size:15px; }
   .legend { display:flex; gap:14px; font-size:12.5px; color:var(--muted); margin-bottom:8px; }
   .legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
 </style>
@@ -176,6 +181,7 @@ const STATUS = {
 const VISIT_STATUS = { awaiting: 'Waiting', in_progress: 'In progress', follow_up: 'Follow-up', closed: 'Closed' };
 const AGE_GROUPS = ['Under 18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
 const GENDERS = ['Female', 'Male', 'Non-binary', 'Prefer not to say'];
+const PROVINCES = ['Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape', 'Western Cape'];
 const STAFF = ['super_admin', 'management', 'hub_manager', 'hub_staff', 'programme_manager'];
 const MANAGERS = ['super_admin', 'management'];
 const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'];
@@ -829,15 +835,16 @@ function chart(canvasId, type, labels, datasets, extra = {}) {
 /* =====================================================================
    DASHBOARD (Module 5)
    ===================================================================== */
-const DF = { from: addDays(today(), -182), to: today(), hub: '', region: '', prog: '', cat: '', gender: '', age: '', vtype: '' };
+const DF = { from: addDays(today(), -182), to: today(), hub: '', region: '', town: '', prog: '', cat: '', gender: '', age: '', vtype: '' };
 async function vDashboard() {
   const hubs = myHubs();
   $('page').innerHTML = `
     <div class="filters" id="dfil">
       <span class="lbl">From</span><input class="i" type="date" id="f_from" value="${DF.from}">
       <span class="lbl">To</span><input class="i" type="date" id="f_to" value="${DF.to}">
-      <select class="i" id="f_region">${opts(A.ref.regions, DF.region, 'All regions', r => r.name + (r.province ? ' (' + r.province + ')' : ''))}</select>
-      <select class="i" id="f_hub">${opts(hubs, DF.hub, 'All hubs')}</select>
+      <select class="i" id="f_region">${opts(A.ref.regions, DF.region, 'All provinces', r => r.name + (A.ref.hubs.some(h => h.region_id === r.id) ? '' : ' (no hubs)'))}</select>
+      <select class="i" id="f_town">${sopts(uniq(hubs.filter(h => !DF.region || h.region_id === DF.region).map(h => h.town).filter(Boolean)).sort(), DF.town, 'All towns')}</select>
+      <select class="i" id="f_hub">${opts(hubs.filter(h => (!DF.region || h.region_id === DF.region) && (!DF.town || h.town === DF.town)), DF.hub, 'All hubs')}</select>
       <select class="i" id="f_prog">${opts(A.ref.progs, DF.prog, 'All programmes')}</select>
       <select class="i" id="f_cat">${opts(A.ref.cats, DF.cat, 'All services')}</select>
       <select class="i" id="f_gender">${sopts(GENDERS, DF.gender, 'All genders')}</select>
@@ -847,7 +854,9 @@ async function vDashboard() {
     </div><div id="dbody"><div class="spin"></div></div>`;
   const map = { f_from: 'from', f_to: 'to', f_hub: 'hub', f_region: 'region', f_prog: 'prog', f_cat: 'cat', f_gender: 'gender', f_age: 'age', f_vtype: 'vtype' };
   Object.keys(map).forEach(id => $(id).onchange = e => { DF[map[id]] = e.target.value; drawDashboard().catch(fail); });
-  $('f_reset').onclick = () => { Object.assign(DF, { from: addDays(today(), -182), to: today(), hub: '', region: '', prog: '', cat: '', gender: '', age: '', vtype: '' }); vDashboard().catch(fail); };
+  $('f_region').onchange = e => { DF.region = e.target.value; DF.town = ''; DF.hub = ''; vDashboard().catch(fail); };
+  $('f_town').onchange = e => { DF.town = e.target.value; DF.hub = ''; vDashboard().catch(fail); };
+  $('f_reset').onclick = () => { Object.assign(DF, { from: addDays(today(), -182), to: today(), hub: '', region: '', town: '', prog: '', cat: '', gender: '', age: '', vtype: '' }); vDashboard().catch(fail); };
   await drawDashboard();
 }
 
@@ -855,6 +864,7 @@ function applyFilters(rows, F) {
   const hubIds = myHubs().map(h => h.id);
   return rows.filter(r => hubIds.includes(r.hub_id)
     && (!F.hub || r.hub_id === F.hub) && (!F.region || r.region_id === F.region)
+    && (!F.town || (byId(A.ref.hubs, r.hub_id) || {}).town === F.town)
     && (!F.prog || r.programme_id === F.prog) && (!F.cat || r.category_id === F.cat)
     && (!F.gender || r.gender === F.gender) && (!F.age || r.age_group === F.age)
     && (!F.vtype || (F.vtype === 'first' ? r.is_first_visit : !r.is_first_visit)));
@@ -872,7 +882,7 @@ async function drawDashboard() {
   const reqByCat = cats.map(c => rows.filter(r => r.category_id === c.id).length);
   const delByCat = cats.map(c => rows.filter(r => r.category_id === c.id && (r.status === 'completed' || r.status === 'referred')).length);
   const statusCounts = Object.keys(STATUS).map(k => rows.filter(r => r.status === k).length);
-  const hubsShown = myHubs().filter(h => !DF.hub || h.id === DF.hub);
+  const hubsShown = myHubs().filter(h => (!DF.hub || h.id === DF.hub) && (!DF.region || h.region_id === DF.region) && (!DF.town || h.town === DF.town));
   const comm = countBy(visitRows, r => r.community || 'Not stated', r => r.visitor_id).slice(0, 10);
   const ageCounts = AGE_GROUPS.map(a => uniq(visitRows.filter(r => r.age_group === a).map(r => r.visitor_id)).length);
   const genCounts = GENDERS.map(g => uniq(visitRows.filter(r => r.gender === g).map(r => r.visitor_id)).length);
@@ -1203,7 +1213,7 @@ async function drawReport() {
    ADMINISTRATION (Module 7)
    ===================================================================== */
 const ADMIN_TABS = [
-  ['hubs', 'Hubs & kiosks'], ['regions', 'Regions'], ['services', 'Service categories'], ['programmes', 'Programmes'], ['donors', 'Donors & funding'],
+  ['hubs', 'Hubs & kiosks'], ['regions', 'Provinces'], ['services', 'Service categories'], ['programmes', 'Programmes'], ['donors', 'Donors & funding'],
   ['users', 'Users & access'], ['communities', 'Communities'], ['settings', 'Settings & POPIA'], ['audit', 'Audit log']
 ];
 let ADM = 'hubs';
@@ -1225,11 +1235,12 @@ async function aHubs() {
   const base = new URL('kiosk.html', location.href).href;
   $('aout').innerHTML = `
     <div class="row" style="justify-content:space-between;margin-bottom:12px"><div class="muted">Each Hub has its own kiosk link. Open it once on the Hub's tablet — the tablet remembers it.</div>${isAdmin() ? '<button class="btn" id="newHub">+ Add hub</button>' : ''}</div>
-    ${tbl(['Hub', 'Region', 'Services offered', 'Kiosk link', 'Status', ''], A.ref.hubs.filter(h => can(MANAGERS) || (A.m.hub_ids || []).includes(h.id)).map(h => {
+    ${tbl(['Hub', 'Town', 'Province', 'Services offered', 'Kiosk link', 'Status', ''], A.ref.hubs.filter(h => can(MANAGERS) || (A.m.hub_ids || []).includes(h.id)).map(h => {
       const l = links.find(x => x.hub_id === h.id);
       const url = l ? base + '?k=' + l.token : '';
-      return `<tr><td><span class="chip"><span class="dot" style="background:${esc(h.brand_colour)}"></span>${esc(h.name)}</span><div class="faint" style="font-size:12px">${esc(h.code || '')}</div></td>
-        <td>${esc(nameOf(A.ref.regions, h.region_id))}</td><td>${A.ref.hubSvc.filter(s => s.hub_id === h.id).length} of ${A.ref.cats.filter(c => c.active).length}</td>
+      return `<tr><td><div class="row" style="gap:10px;flex-wrap:nowrap"><div class="logoslot sm" style="border-color:${esc(h.brand_colour)}">${h.logo_url ? `<img src="${esc(h.logo_url)}" alt="">` : `<span style="color:${esc(h.brand_colour)}">${esc(hubInitials(h.name))}</span>`}</div>
+        <div><b>${esc(h.name)}</b><div class="faint" style="font-size:12px">${esc(h.code || '')}${h.logo_url ? '' : ' · no logo yet'}</div></div></div></td>
+        <td>${esc(h.town || '—')}</td><td>${esc(nameOf(A.ref.regions, h.region_id))}</td><td>${A.ref.hubSvc.filter(s => s.hub_id === h.id).length} of ${A.ref.cats.filter(c => c.active).length}</td>
         <td>${l ? `<button class="btn sm sec" data-copy="${esc(url)}">Copy link</button> <a class="btn sm sec" href="${esc(url)}" target="_blank" style="text-decoration:none">Open</a> <button class="btn sm sec" data-rot="${h.id}" title="Old link stops working">New link</button>` : '—'}</td>
         <td>${activeBadge(h.active)}</td><td>${isAdmin() ? `<button class="btn sm sec" data-edit="${h.id}">Edit</button>` : ''}</td></tr>`;
     }))}
@@ -1242,10 +1253,20 @@ async function aHubs() {
 function hubForm(h) {
   const offered = new Set(A.ref.hubSvc.filter(s => s.hub_id === h.id).map(s => s.category_id));
   if (!h.id) A.ref.cats.forEach(c => offered.add(c.id));
-  modal(h.id ? 'Edit hub' : 'Add hub', `<div class="fld grid g2" style="gap:0 14px">
+  const lg = { file: null, remove: false };
+  const w = modal(h.id ? 'Edit hub' : 'Add hub', `
+    <label class="lb">Kiosk logo</label>
+    <div class="row" style="gap:14px;align-items:center;flex-wrap:nowrap">
+      <div id="h_logo_prev" class="logoslot">${h.logo_url ? `<img src="${esc(h.logo_url)}" alt="">` : `<span>${esc(hubInitials(h.name))}</span>`}</div>
+      <div><div class="row" style="gap:8px"><label class="btn sm sec" style="cursor:pointer">${h.logo_url ? 'Replace logo' : 'Upload logo'}<input type="file" id="h_logo" accept="image/png,image/jpeg,image/webp" hidden></label>
+        <button class="btn sm danger ${h.logo_url ? '' : 'hidden'}" type="button" id="h_logo_rm">Remove</button></div>
+        <div class="faint" style="font-size:12.5px;margin-top:6px">PNG, JPG or WebP, up to 1 MB. A square logo on a transparent or white background works best.<br>Without a logo the kiosk shows the Hub's initials.</div></div>
+    </div>
+    <div class="fld grid g2" style="gap:0 14px">
     ${fld('Hub name', `<input class="i" id="h_name" value="${esc(h.name || '')}">`, true)}
     ${fld('Short code', `<input class="i" id="h_code" value="${esc(h.code || '')}">`)}
-    ${fld('Region', `<select class="i" id="h_region">${opts(A.ref.regions, h.region_id, 'No region')}</select>`)}
+    ${fld('Town', `<input class="i" id="h_town" list="h_towns" value="${esc(h.town || '')}" placeholder="e.g. Fish Hoek"><datalist id="h_towns">${uniq(A.ref.hubs.map(x => x.town).filter(Boolean)).sort().map(t => `<option value="${esc(t)}">`).join('')}</datalist>`)}
+    ${fld('Province', `<select class="i" id="h_region">${sopts(PROVINCES, (byId(A.ref.regions, h.region_id) || {}).name || '', 'Select province…')}</select>`)}
     ${fld('Address', `<input class="i" id="h_addr" value="${esc(h.address || '')}">`, true)}
     ${fld('Brand colour (kiosk)', `<input class="i" type="color" id="h_col" value="${esc(h.brand_colour || '#0f766e')}" style="height:40px;padding:4px">`)}
     ${fld('Status', `<select class="i" id="h_act">${opts([{ id: 'true', name: 'Active' }, { id: 'false', name: 'Inactive' }], String(h.active !== false))}</select>`)}
@@ -1253,16 +1274,47 @@ function hubForm(h) {
     <label class="lb">Services offered at this Hub</label><div class="checks">${A.ref.cats.filter(c => c.active).map(c => `<label><input type="checkbox" value="${c.id}" ${offered.has(c.id) ? 'checked' : ''}> ${esc(c.icon || '')} ${esc(c.name)}</label>`).join('')}</div>
     <div class="faint" style="font-size:12.5px;margin-top:6px">Unticked services still appear on the kiosk as "not offered here" so visitors can record the need.</div>`,
   { save: async w => {
-    const row = { org_id: A.m.org_id, name: $('h_name').value.trim(), code: $('h_code').value.trim() || null, region_id: $('h_region').value || null, address: $('h_addr').value.trim() || null,
+    const prov = $('h_region').value;
+    let region = prov ? A.ref.regions.find(r => r.name === prov) : null;
+    if (prov && !region) region = await q(sb.from('regions').insert({ org_id: A.m.org_id, name: prov, province: prov }).select().single());
+    const row = { org_id: A.m.org_id, name: $('h_name').value.trim(), code: $('h_code').value.trim() || null, region_id: region ? region.id : null, town: $('h_town').value.trim() || null, address: $('h_addr').value.trim() || null,
                   brand_colour: $('h_col').value, active: $('h_act').value === 'true', welcome_message: $('h_wel').value.trim() || null };
     if (!row.name) { toast('Enter a hub name', true); return false; }
     const saved = h.id ? (await q(sb.from('hubs').update(row).eq('id', h.id).select().single())) : (await q(sb.from('hubs').insert(row).select().single()));
+    if (lg.file || lg.remove) {
+      let url = null;
+      if (lg.file) {
+        const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[lg.file.type];
+        const path = `${A.m.org_id}/${saved.id}-${Date.now()}.${ext}`;
+        const { error } = await sb.storage.from('hub-logos').upload(path, lg.file, { contentType: lg.file.type, cacheControl: '31536000' });
+        if (error) throw error;
+        url = sb.storage.from('hub-logos').getPublicUrl(path).data.publicUrl;
+      }
+      await q(sb.from('hubs').update({ logo_url: url }).eq('id', saved.id));
+      const old = h.logo_url && h.logo_url.split('/hub-logos/')[1];
+      if (old) await sb.storage.from('hub-logos').remove([decodeURIComponent(old)]);
+    }
     const want = [...w.querySelectorAll('.checks input:checked')].map(i => i.value);
     await q(sb.from('hub_services').delete().eq('hub_id', saved.id));
     if (want.length) await q(sb.from('hub_services').insert(want.map(c => ({ hub_id: saved.id, category_id: c, org_id: A.m.org_id }))));
     toast('Hub saved'); await reload();
   } });
+  $('h_logo').onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(f.type)) { e.target.value = ''; return toast('Please choose a PNG, JPG or WebP image', true); }
+    if (f.size > 1048576) { e.target.value = ''; return toast('That image is larger than 1 MB — please use a smaller file', true); }
+    lg.file = f; lg.remove = false;
+    $('h_logo_prev').innerHTML = `<img src="${URL.createObjectURL(f)}" alt="">`;
+    $('h_logo_rm').classList.remove('hidden');
+  };
+  $('h_logo_rm').onclick = () => {
+    lg.file = null; lg.remove = !!h.logo_url; $('h_logo').value = '';
+    $('h_logo_prev').innerHTML = `<span>${esc(hubInitials($('h_name').value || h.name))}</span>`;
+    $('h_logo_rm').classList.add('hidden');
+  };
+  return w;
 }
+const hubInitials = n => (n || 'H').split(/\s+/).filter(x => /^[A-Za-z]/.test(x) && !/^(of|the|and|community|hub)$/i.test(x)).slice(0, 2).map(x => x[0]).join('').toUpperCase() || 'H';
 
 function simpleCrud({ table, title, rows, cols, render, fields, defaults = {}, allowDelete }) {
   $('aout').innerHTML = `<div class="row" style="justify-content:flex-end;margin-bottom:12px"><button class="btn" id="addRow">+ Add ${title}</button></div>
@@ -1286,9 +1338,10 @@ function simpleCrud({ table, title, rows, cols, render, fields, defaults = {}, a
 }
 
 async function aRegions() {
-  simpleCrud({ table: 'regions', title: 'region', rows: A.ref.regions, cols: ['Region', 'Province', 'Hubs'], allowDelete: true,
-    render: r => [esc(r.name), esc(r.province || ''), A.ref.hubs.filter(h => h.region_id === r.id).length],
-    fields: [{ k: 'name', label: 'Region name', req: true }, { k: 'province', label: 'Province', type: 'select', options: v => sopts(['Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape', 'Western Cape'], v, 'Select…') }] });
+  simpleCrud({ table: 'regions', title: 'province', rows: A.ref.regions, cols: ['Province', 'Towns', 'Hubs'], allowDelete: true,
+    render: r => { const hs = A.ref.hubs.filter(h => h.region_id === r.id); return [esc(r.name), uniq(hs.map(h => h.town).filter(Boolean)).sort().map(t => chip(t)).join('') || '<span class="faint">—</span>', hs.map(h => chip(h.name.replace(' Community Hub', ''))).join('') || '<span class="faint">None</span>']; },
+    fields: [{ k: 'name', label: 'Province', req: true, type: 'select', options: v => sopts(PROVINCES.filter(p => p === v || !A.ref.regions.some(r => r.name === p)), v, 'Select…') }] });
+  $('aout').insertAdjacentHTML('afterbegin', '<div class="note" style="margin-bottom:12px">All nine provinces are available. Set each Hub\'s province and town under <b>Hubs & kiosks → Edit</b>; both can be used to filter the dashboard.</div>');
 }
 async function aServices() {
   simpleCrud({ table: 'service_categories', title: 'service category', rows: A.ref.cats, cols: ['', 'Category', 'Examples (shown on kiosk)', 'Order', 'Status'],
