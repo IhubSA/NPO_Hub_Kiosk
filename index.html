@@ -1447,12 +1447,22 @@ async function aSettings() {
       <label class="lb">Feedback questions</label><div class="checks">${tog('fq_assisted', fq.assisted, '1. Were you assisted?')}${tog('fq_rating', fq.rating, '2. Rating 1–5')}${tog('fq_staff', fq.staff_helpful, '3. Staff helpful?')}${tog('fq_again', fq.visit_again, '4. Visit again?')}${tog('fq_imp', fq.improve, '5. What to improve')}${tog('fq_needs', fq.additional_needs, '6. Additional needs')}</div></div>
     <div class="card"><h3>POPIA</h3><div class="fld">
       ${fld('Privacy notice shown before registration', `<textarea class="i" id="s_notice" style="min-height:170px" ${sa ? '' : 'disabled'}>${esc(s.privacy_notice || '')}</textarea>`)}
+      <div class="faint" style="font-size:12.5px;margin-top:6px">Each kiosk fills in its own details: <code>{hub}</code> Hub name · <code>{town}</code> Hub town · <code>{organisation}</code> organisation name · <code>{retention}</code> retention period.</div>
+      <label class="lb">Preview for <select class="i" id="s_prevhub" style="padding:3px 6px;font-size:12.5px">${opts(A.ref.hubs, (A.ref.hubs[0] || {}).id)}</select></label>
+      <div class="note" id="s_preview" style="line-height:1.55"></div>
       <div class="grid g2" style="gap:0 14px">${fld('Consent version', `<input class="i" id="s_cv" value="${esc(s.consent_version || 'v1')}" ${sa ? '' : 'disabled'}>`)}
       ${fld('Retention period (months after last visit)', `<input class="i" id="s_ret" type="number" min="6" value="${esc(s.retention_months || 36)}" ${sa ? '' : 'disabled'}>`)}</div></div>
       <div class="faint" style="font-size:12.5px;margin-top:6px">Change the consent version whenever you change the notice. Each visitor's consent is recorded with the version they agreed to.</div>
       ${sa ? `<div class="row" style="margin-top:14px"><button class="btn danger" id="runRet">Apply retention now</button><span class="faint" style="font-size:12.5px">Anonymises visitors whose last visit is older than the retention period.</span></div>` : ''}</div>
   </div>
   ${sa ? '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" id="saveS">Save settings</button></div>' : '<div class="note" style="margin-top:12px">Only a Super Administrator can change these settings.</div>'}`;
+  const preview = () => {
+    const h = byId(A.ref.hubs, $('s_prevhub').value) || {}; const months = Number($('s_ret').value) || 36;
+    const ret = months % 12 === 0 ? (months / 12) + (months === 12 ? ' year' : ' years') : months + ' months';
+    $('s_preview').textContent = ($('s_notice').value || '').replace(/\{hub\}/gi, h.name || 'this Hub').replace(/\{town\}/gi, h.town || h.name || 'your area')
+      .replace(/\{organisation\}|\{organization\}/gi, $('s_name').value || A.ref.org.name).replace(/\{retention\}/gi, ret);
+  };
+  ['s_notice', 's_ret', 's_name'].forEach(id => $(id).addEventListener('input', preview)); $('s_prevhub').onchange = preview; preview();
   if (!sa) return;
   $('saveS').onclick = async () => {
     const ns = Object.assign({}, s, { kiosk_idle_seconds: Number($('s_idle').value) || 90, privacy_notice: $('s_notice').value.trim(), consent_version: $('s_cv').value.trim() || 'v1', retention_months: Number($('s_ret').value) || 36,

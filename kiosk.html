@@ -237,6 +237,15 @@
   const settings = () => (cfg && cfg.settings) || {};
   const regField = f => { const r = settings().reg_fields; return !r || r[f] !== false; };
   const markInner = () => cfg && cfg.hub.logo ? `<img src="${esc(cfg.hub.logo)}" alt="${esc(cfg.hub.name)} logo" onerror="this.replaceWith(document.createTextNode('${esc(initials(cfg.hub.name)).replace(/'/g, '')}'))">` : esc(initials(cfg ? cfg.hub.name : ''));
+  // privacy notice with this kiosk's own Hub details filled in
+  function noticeText() {
+    const st = settings(), h = (cfg && cfg.hub) || {};
+    const months = parseInt(st.retention_months, 10) || 36;
+    const retention = months % 12 === 0 ? (months / 12) + (months === 12 ? ' year' : ' years') : months + ' months';
+    const t = st.privacy_notice || '{hub} collects your details to assist you and to report on our services. Your information is kept secure and is only seen by authorised {hub} staff.';
+    return t.replace(/\{hub\}/gi, h.name || 'this Hub').replace(/\{town\}/gi, h.town || h.name || 'your area')
+            .replace(/\{organisation\}|\{organization\}/gi, (cfg && cfg.org && cfg.org.name) || 'our organisation').replace(/\{retention\}/gi, retention);
+  }
   const fmtMobile = d => d.replace(/\D/g, '').slice(0, 10).replace(/^(\d{3})(\d{0,3})(\d{0,4}).*/, (m, a, b, c) => [a, b, c].filter(Boolean).join(' '));
 
   // ---------- chrome (top bar + footer) ----------
@@ -325,7 +334,7 @@
 
   function rConsent() {
     panel({ title: 'Before we start', lead: 'Please read how we look after your information.', next: 'I agree — continue', nextDisabled: !s.consent, back: 'Cancel',
-      body: `<div class="notice">${esc(settings().privacy_notice || 'We collect your details to assist you and to report on our services. Your information is kept secure and only seen by authorised staff.')}</div>
+      body: `<div class="notice">${esc(noticeText())}</div>
         <button class="check ${s.consent ? 'on' : ''}" id="ck"><div class="box">✓</div><div>I have read this notice and agree to my information being collected and used as described.</div></button>` });
     bind('ck', 'click', () => { s.consent = !s.consent; rConsent(); });
     bind('back', 'click', reset);
