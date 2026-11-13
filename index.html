@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>NPO Community Hub — Staff & Management</title>
+<title>CIMP — Community Integrated MEL Platform</title>
+<link rel="icon" href="cimp-mark.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --brand:#0f766e; --brand-2:#115e59; --brand-soft:#e6f4f2; --side:#0d2624; --ink:#14201f; --muted:#5b6b69; --faint:#8a9896;
+    --brand:#1b6aa8; --brand-2:#145489; --brand-soft:#e8f1fa; --side:#0b2c46; --accent:#4c9a2a; --ink:#13212e; --muted:#566476; --faint:#8794a4;
     --line:#e3e9e8; --bg:#f5f7f6; --card:#ffffff; --danger:#b42318; --warn:#b54708; --ok:#067647;
     --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --grid:#eef1f0;
     --st-awaiting:#fab219; --st-progress:#2a78d6; --st-completed:#0ca30c; --st-referred:#6250d6; --st-follow:#ec835a; --st-unable:#d03b3b;
@@ -22,9 +23,14 @@
 
   /* auth */
   .auth { min-height:100vh; display:grid; grid-template-columns:1.1fr 1fr; }
-  .auth .art { background:linear-gradient(160deg,#0d2624,#0f766e 70%,#14b8a6); color:#fff; padding:56px; display:flex; flex-direction:column; justify-content:space-between; }
+  .auth .art { background:radial-gradient(700px 500px at 100% 0%, rgba(76,154,42,.35), transparent 60%), linear-gradient(160deg,#0b2c46,#14548a 65%,#1f7cc0); color:#fff; padding:56px; display:flex; flex-direction:column; justify-content:space-between; }
   .auth .art h1 { font-size:40px; line-height:1.1; margin:0 0 16px; letter-spacing:-.02em; max-width:520px; }
   .auth .art p { font-size:17px; opacity:.85; max-width:480px; line-height:1.55; }
+  .logo-card { align-self:flex-start; background:#fff; border-radius:22px; padding:14px 18px; display:inline-block; box-shadow:0 20px 50px -25px rgba(0,0,0,.6); }
+  .logo-card img { height:150px; display:block; }
+  .tagline { font-size:13px; letter-spacing:.22em; text-transform:uppercase; opacity:.85; margin:0 0 18px; font-weight:700; }
+  .tagline b { color:#8fd16a; }
+  .auth .formlogo { height:110px; display:none; margin:0 0 18px; }
   .auth .art ul { list-style:none; padding:0; margin:28px 0 0; display:grid; gap:10px; font-size:15px; opacity:.92; }
   .auth .art li::before { content:'✓  '; font-weight:800; }
   .auth .form { display:flex; align-items:center; justify-content:center; padding:40px; }
@@ -32,18 +38,19 @@
   .auth h2 { margin:0 0 6px; font-size:26px; }
   .muted { color:var(--muted); }
   .faint { color:var(--faint); }
-  @media (max-width:860px){ .auth{grid-template-columns:1fr} .auth .art{display:none} }
+  @media (max-width:860px){ .auth{grid-template-columns:1fr} .auth .art{display:none} .auth .formlogo{display:block} }
 
   /* layout */
   .shell { display:grid; grid-template-columns:232px 1fr; min-height:100vh; }
   aside.side { background:var(--side); color:#cfe0de; padding:18px 12px; display:flex; flex-direction:column; gap:4px; position:sticky; top:0; height:100vh; }
   .brandrow { display:flex; gap:10px; align-items:center; padding:6px 10px 18px; }
-  .brandrow .lg { width:36px; height:36px; border-radius:10px; background:#14b8a6; color:#04201d; display:grid; place-items:center; font-weight:800; }
+  .brandrow .lg { width:44px; height:44px; border-radius:12px; background:#fff; display:grid; place-items:center; overflow:hidden; flex:none; }
+  .brandrow .lg img { width:100%; height:100%; object-fit:contain; padding:3px; }
   .brandrow b { color:#fff; display:block; font-size:15px; }
   .brandrow span { font-size:12px; opacity:.7; }
   .nav { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; color:#cfe0de; cursor:pointer; border:0; background:none; text-align:left; font-weight:600; width:100%; }
   .nav:hover { background:rgba(255,255,255,.06); }
-  .nav.on { background:rgba(20,184,166,.18); color:#fff; }
+  .nav.on { background:rgba(76,154,42,.28); color:#fff; box-shadow:inset 3px 0 0 #8fd16a; }
   .nav .ic { width:20px; text-align:center; }
   .nav .ct { margin-left:auto; background:#fab219; color:#3b2a00; font-size:12px; border-radius:999px; padding:1px 8px; font-weight:700; }
   .side .foot { margin-top:auto; font-size:12px; padding:10px; opacity:.75; line-height:1.5; }
@@ -186,7 +193,7 @@
 <script>
 'use strict';
 /* =====================================================================
-   NPO Community Hub — staff, management & donor app
+   CIMP — Community Integrated MEL Platform: staff, management & donor app
    ===================================================================== */
 const CFG = window.NPO_HUB_CONFIG;
 const sb = supabase.createClient(CFG.url, CFG.key, { db: { schema: CFG.schema }, auth: { storageKey: 'npohub-staff-auth', persistSession: true } });
@@ -289,19 +296,20 @@ function renderAuth(mode = 'login', msg = '') {
   $('root').innerHTML = `
   <div class="auth">
     <div class="art">
-      <div style="font-weight:800;letter-spacing:.02em;opacity:.9">${esc(CFG.appName)}</div>
+      <div class="logo-card"><img src="cimp-logo.png" alt="CIMP — Community Integrated MEL Platform"></div>
       <div>
-        <h1>Visitor management & impact measurement for community hubs</h1>
-        <p>Register visitors, track the help they receive, collect feedback and turn it into evidence your donors can trust.</p>
-        <ul><li>Tablet kiosk sign-in for every Hub</li><li>Live service queue for Hub staff</li><li>Dashboards across all Hubs & programmes</li><li>Donor impact reports in PDF & Excel</li><li>Built for POPIA from day one</li></ul>
+        <p class="tagline">People <b>•</b> Evidence <b>•</b> Greater Impact</p>
+        <h1>${esc(CFG.fullName || CFG.appName)}</h1>
+        <p>Register community members at every Hub, record the help they receive, collect their feedback and turn it into monitoring, evaluation and learning evidence your donors can trust.</p>
+        <ul><li>Tablet kiosk sign-in at every Hub</li><li>Simple service recording for Community Liaison Officers</li><li>Dashboards across provinces, towns, Hubs & programmes</li><li>Donor impact reports in PDF & Excel</li><li>Built for POPIA from day one</li></ul>
       </div>
-      <div style="font-size:13px;opacity:.7">Built by iHubSA · Turning Business Problems Into Digital Solutions</div>
+      <div style="font-size:13px;opacity:.7">Powered by iHubSA · Turning Business Problems Into Digital Solutions</div>
     </div>
     <div class="form"><div class="box" id="authbox"></div></div>
   </div>`;
   const box = $('authbox');
   if (mode === 'login') {
-    box.innerHTML = `<h2>Sign in</h2><p class="muted">Staff, management and donor accounts.</p>
+    box.innerHTML = `<img class="formlogo" src="cimp-logo.png" alt="CIMP"><h2>Sign in</h2><p class="muted">Staff, management and donor accounts.</p>
       <div class="fld"><label class="lb">Email</label><input class="i" id="em" type="email" autocomplete="username">
       <label class="lb">Password</label><input class="i" id="pw" type="password" autocomplete="current-password"></div>
       <div style="color:var(--danger);min-height:22px;margin:10px 0;font-weight:600" id="am">${esc(msg)}</div>
@@ -366,7 +374,13 @@ sb.auth.onAuthStateChange((event, session) => {
   if (event === 'TOKEN_REFRESHED') A.session = session;
 });
 
+function loadLogoData() {
+  const img = new Image();
+  img.onload = () => { try { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0); A.logoData = c.toDataURL('image/png'); } catch (e) {} };
+  img.src = 'cimp-mark.png';
+}
 async function boot() {
+  loadLogoData();
   const { data } = await sb.auth.getSession();
   if (recovering) return;
   if (data.session) { A.session = data.session; startApp(); } else renderAuth();
@@ -450,7 +464,7 @@ function renderShell() {
   $('root').innerHTML = `
   <div class="shell">
     <aside class="side">
-      <div class="brandrow"><div class="lg">${esc((A.ref.org.name || 'N').replace(/[^A-Za-z]/g, '').slice(0, 1))}</div><div><b>${esc(A.ref.org.name)}</b><span>${esc(CFG.appName)}</span></div></div>
+      <div class="brandrow"><div class="lg"><img src="cimp-mark.png" alt="CIMP"></div><div><b>${esc(A.ref.org.name)}</b><span>${esc(CFG.appName)}</span></div></div>
       ${VIEWS.filter(v => v.roles.includes(role())).map(v => `<button class="nav" data-v="${v.k}"><span class="ic">${v.ic}</span>${v.t}${v.k === 'queue' ? '<span class="ct hidden" id="qct"></span>' : ''}</button>`).join('')}
       <div class="foot">
         <div><b style="color:#fff">${esc(A.m.full_name)}</b><br>${esc(ROLE_LABEL[role()])}</div>
@@ -1042,9 +1056,10 @@ function exportPDF(rep) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const W = doc.internal.pageSize.getWidth(), M = 40;
-  doc.setFillColor(15, 118, 110); doc.rect(0, 0, W, 64, 'F');
+  doc.setFillColor(11, 44, 70); doc.rect(0, 0, W, 64, 'F'); doc.setFillColor(76, 154, 42); doc.rect(0, 64, W, 3, 'F');
+  if (A.logoData) { doc.setFillColor(255, 255, 255); doc.roundedRect(W - M - 52, 6, 52, 52, 8, 8, 'F'); doc.addImage(A.logoData, 'PNG', W - M - 48, 10, 44, 44); }
   doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.text(A.ref.org.name, M, 28);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(CFG.appName + ' · generated ' + fmtDT(new Date()), M, 46);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(CFG.appName + ' — ' + (CFG.fullName || '') + ' · generated ' + fmtDT(new Date()), M, 46);
   let y = 96;
   doc.setTextColor(20, 32, 31); doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text(rep.title, M, y); y += 18;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(91, 107, 105); doc.text([rep.subtitle, rep.period].filter(Boolean).join(' · '), M, y); y += 20;
@@ -1067,7 +1082,7 @@ function exportPDF(rep) {
     if (y > 740) { doc.addPage(); y = 50; }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.text(t.title, M, y); doc.setFont('helvetica', 'normal');
     doc.autoTable({ startY: y + 8, margin: { left: M, right: M }, head: [t.cols], body: t.rows.length ? t.rows.map(r => r.map(String)) : [['No data']],
-      styles: { fontSize: 8.5, cellPadding: 4 }, headStyles: { fillColor: [20, 32, 31] }, alternateRowStyles: { fillColor: [246, 248, 247] } });
+      styles: { fontSize: 8.5, cellPadding: 4 }, headStyles: { fillColor: [11, 44, 70] }, alternateRowStyles: { fillColor: [246, 248, 247] } });
     y = doc.lastAutoTable.finalY + 22;
   });
   if (rep.footnote) { if (y > 760) { doc.addPage(); y = 50; } doc.setFontSize(8.5); doc.setTextColor(91, 107, 105); doc.text(doc.splitTextToSize(rep.footnote, W - 2 * M), M, y); }
@@ -1080,7 +1095,7 @@ const fileName = (rep, ext) => (rep.title + ' ' + rep.period).replace(/[^\w\- ]+
 
 function exportXLSX(rep) {
   const wb = XLSX.utils.book_new();
-  const summary = [[rep.title], [A.ref.org.name], [[rep.subtitle, rep.period].filter(Boolean).join(' · ')], ['Generated', fmtDT(new Date())], []];
+  const summary = [[rep.title], [A.ref.org.name], [CFG.appName + ' — ' + (CFG.fullName || '')], [[rep.subtitle, rep.period].filter(Boolean).join(' · ')], ['Generated', fmtDT(new Date())], []];
   (rep.kpis || []).forEach(([l, v]) => summary.push([l, v]));
   if (rep.summary && rep.summary.length) { summary.push([]); rep.summary.forEach(p => summary.push([p])); }
   if (rep.footnote) { summary.push([]); summary.push([rep.footnote]); }

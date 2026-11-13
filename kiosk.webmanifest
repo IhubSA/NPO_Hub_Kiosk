@@ -1,13 +1,14 @@
 {
-  "name": "Community Hub Visitor Sign-in",
-  "short_name": "Hub Sign-in",
+  "name": "CIMP Visitor Sign-in",
+  "short_name": "CIMP Kiosk",
+  "description": "Community Integrated MEL Platform — Hub visitor sign-in",
   "start_url": "kiosk.html",
   "scope": "./",
   "display": "fullscreen",
   "orientation": "landscape",
-  "background_color": "#0b3b37",
-  "theme_color": "#0f766e",
+  "background_color": "#0b2c46",
+  "theme_color": "#1b6aa8",
   "icons": [
-    { "src": "kiosk-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "cimp-mark.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ]
 }

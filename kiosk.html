@@ -9,9 +9,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0f766e">
 <link rel="manifest" href="kiosk.webmanifest">
-<link rel="icon" href="kiosk-icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="kiosk-icon.svg">
-<title>Visitor Sign-in</title>
+<link rel="icon" href="cimp-mark.png" type="image/png">
+<link rel="apple-touch-icon" href="cimp-mark.png">
+<title>CIMP Visitor Sign-in</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -54,6 +54,8 @@
   .pill.warn { background:#fde7e4; color:var(--danger); border-color:#fde7e4; }
   .ghostbtn { border:1px solid var(--glass-line); background:var(--glass); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-radius:999px; padding:11px 20px; font-weight:700; font-size:16px; }
   .ghostbtn:active { transform:scale(.97); }
+  .powered { display:inline-flex; align-items:center; gap:6px; font-weight:700; }
+  .powered img { width:22px; height:22px; border-radius:6px; background:#fff; padding:2px; }
   .stage { position:relative; flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:12px 32px 18px; }
   .foot { position:relative; display:flex; justify-content:center; gap:10px; align-items:center; padding:0 24px 18px; font-size:13px; opacity:.8; }
 
@@ -263,7 +265,7 @@
       ${navigator.onLine ? '' : '<span class="pill warn">Offline</span>'}
       ${inner ? `<button class="ghostbtn" id="startover">✕&nbsp; Start over</button>` : `<div class="clock" id="clock"></div>`}`;
     $foot.innerHTML = inner ? '🔒 Your information is protected under POPIA and is never shown to the next visitor.'
-      : `<span>🔒 Protected under POPIA</span><span>·</span><button class="ghostbtn" id="fs" style="padding:7px 14px;font-size:13px">⤢ Full screen</button>`;
+      : `<span>🔒 Protected under POPIA</span><span>·</span><span class="powered"><img src="cimp-mark.png" alt="">Powered by CIMP</span><span>·</span><button class="ghostbtn" id="fs" style="padding:7px 14px;font-size:13px">⤢ Full screen</button>`;
     tickClock();
     const logo = document.getElementById('logo');
     logo.addEventListener('click', () => {
