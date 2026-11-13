@@ -176,6 +176,16 @@
   .logoslot span { font-weight:800; font-size:24px; color:var(--brand); }
   .logoslot.sm { width:44px; height:44px; border-radius:12px; border-style:solid; border-width:2px; }
   .logoslot.sm span { font-size:15px; }
+  .bargrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:16px; }
+  @media (max-width:1100px){ .bargrid{grid-template-columns:1fr} }
+  .barcard h4 { margin:0 0 2px !important; }
+  .barcard .sub { margin-bottom:10px; }
+  .bl { display:grid; grid-template-columns:minmax(90px,46%) 1fr auto; gap:10px; align-items:center; padding:5px 0; font-size:13.5px; }
+  .bl-l { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bl-t { height:12px; background:#edf2f6; border-radius:6px; overflow:hidden; }
+  .bl-t i { display:block; height:100%; background:#2a78d6; border-radius:6px; }
+  .bl-v { font-weight:700; font-variant-numeric:tabular-nums; text-align:right; min-width:44px; }
+  .bl-v span { display:block; font-weight:500; font-size:11.5px; color:var(--muted); }
   .legend { display:flex; gap:14px; font-size:12.5px; color:var(--muted); margin-bottom:8px; }
   .legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
 </style>
@@ -200,14 +210,15 @@ const sb = supabase.createClient(CFG.url, CFG.key, { db: { schema: CFG.schema },
 
 const ROLE_LABEL = { super_admin: 'Super Administrator', management: 'Management', hub_manager: 'Hub Manager', hub_staff: 'Hub Staff', programme_manager: 'Programme Manager', donor_viewer: 'Donor Viewer' };
 const STATUS = {
-  awaiting:    { label: 'Awaiting Assistance', c: 'var(--st-awaiting)' },
-  in_progress: { label: 'In Progress', c: 'var(--st-progress)' },
-  completed:   { label: 'Service Completed', c: 'var(--st-completed)' },
-  referred:    { label: 'Referred to External Organisation', c: 'var(--st-referred)' },
-  follow_up:   { label: 'Follow-up Required', c: 'var(--st-follow)' },
-  unable:      { label: 'Unable to Assist', c: 'var(--st-unable)' }
+  awaiting:    { label: 'Not yet recorded', c: 'var(--st-awaiting)' },
+  in_progress: { label: 'Not yet recorded', c: 'var(--st-awaiting)' },
+  completed:   { label: 'Provided', c: 'var(--st-completed)' },
+  referred:    { label: 'Referred', c: 'var(--st-referred)' },
+  follow_up:   { label: 'Follow-up needed', c: 'var(--st-follow)' },
+  unable:      { label: "Couldn't help", c: 'var(--st-unable)' }
 };
 const VISIT_STATUS = { awaiting: 'Waiting', in_progress: 'In progress', follow_up: 'Follow-up', closed: 'Closed' };
+const ageRank = a => { const i = ['Under 18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+'].indexOf(a); return i < 0 ? 99 : i; };
 const AGE_GROUPS = ['Under 18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
 const GENDERS = ['Female', 'Male', 'Non-binary', 'Prefer not to say'];
 const PROVINCES = ['Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape', 'Western Cape'];
@@ -376,7 +387,7 @@ sb.auth.onAuthStateChange((event, session) => {
 
 function loadLogoData() {
   const img = new Image();
-  img.onload = () => { try { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0); A.logoData = c.toDataURL('image/png'); } catch (e) {} };
+  img.onload = () => { try { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0); A.logoData = c.toDataURL('image/jpeg', 0.9); } catch (e) {} };
   img.src = 'cimp-mark.png';
 }
 async function boot() {
@@ -986,7 +997,10 @@ async function drawDashboard() {
   const cats = A.ref.cats;
   const reqByCat = cats.map(c => rows.filter(r => r.category_id === c.id).length);
   const delByCat = cats.map(c => rows.filter(r => r.category_id === c.id && (r.status === 'completed' || r.status === 'referred')).length);
-  const statusCounts = Object.keys(STATUS).map(k => rows.filter(r => r.status === k).length);
+  const OUT = [['completed', 'Provided', '#0ca30c'], ['referred', 'Referred', '#6250d6'], ['follow_up', 'Follow-up needed', '#ec835a'], ['unable', "Couldn't help (offered here)", '#d03b3b'], ['pending', 'Not yet recorded', '#fab219']];
+  const outRows = rows.filter(r => r.is_available);
+  const statusCounts = OUT.map(([k]) => outRows.filter(r => k === 'pending' ? (r.status === 'awaiting' || r.status === 'in_progress') : r.status === k).length);
+  const followN = outRows.filter(r => r.status === 'follow_up').length;
   const hubsShown = myHubs().filter(h => (!DF.hub || h.id === DF.hub) && (!DF.region || h.region_id === DF.region) && (!DF.town || h.town === DF.town));
   const comm = countBy(visitRows, r => r.community || 'Not stated', r => r.visitor_id).slice(0, 10);
   const ageCounts = AGE_GROUPS.map(a => uniq(visitRows.filter(r => r.age_group === a).map(r => r.visitor_id)).length);
@@ -999,8 +1013,8 @@ async function drawDashboard() {
       ${kpi('Unique beneficiaries', fmtN(M.unique), fmtN(M.newBen) + ' new to the Hubs')}
       ${kpi('Repeat visitors', fmtN(M.repeatVisitors), fmtPct(pct(M.repeatVisitors, M.unique)) + ' of beneficiaries')}
       ${kpi('Services requested', fmtN(M.requested), fmtN(M.unmet) + ' not offered (unmet)')}
-      ${kpi('Services delivered', fmtN(M.delivered), 'Completed or referred')}
-      ${kpi('Outstanding requests', fmtN(M.outstanding), 'Waiting, in progress or follow-up')}
+      ${kpi('Services provided', fmtN(M.delivered), 'Provided or referred')}
+      ${kpi('Not yet recorded', fmtN(M.outstanding - followN), fmtN(followN) + ' follow-ups open')}
       ${kpi('Referrals', fmtN(M.referrals), 'To external organisations')}
       ${kpi('Visitor satisfaction', M.avgRating ? M.avgRating.toFixed(2) + '/5' : '–', fmtN(M.feedbackN) + ' feedback responses')}
       ${kpi('Service resolution', fmtPct(M.resolution), 'Of actioned requests')}
@@ -1008,11 +1022,11 @@ async function drawDashboard() {
     </div>
     <div class="grid g2">
       <div class="card"><h3>Visits and unique beneficiaries per month</h3><div class="sub">Each bar counts visits; the line counts different people</div><div class="chartbox"><canvas id="c1"></canvas></div></div>
-      <div class="card"><h3>Services requested vs delivered</h3><div class="sub">By service category</div><div class="chartbox"><canvas id="c2"></canvas></div></div>
+      <div class="card"><h3>Services requested vs provided</h3><div class="sub">By service category (provided includes referrals)</div><div class="chartbox"><canvas id="c2"></canvas></div></div>
       <div class="card"><h3>Hub comparison</h3><div class="sub">Visits per Hub</div><div class="chartbox"><canvas id="c3"></canvas></div>
         <table class="t" style="margin-top:12px"><thead><tr><th>Hub</th><th class="n">Visits</th><th class="n">Beneficiaries</th><th class="n">Resolution</th><th class="n">Rating</th></tr></thead><tbody>
         ${hubsShown.map(h => { const m = metrics(rows.filter(r => r.hub_id === h.id)); return `<tr><td>${esc(h.name)}</td><td class="n">${fmtN(m.visits)}</td><td class="n">${fmtN(m.unique)}</td><td class="n">${fmtPct(m.resolution)}</td><td class="n">${m.avgRating ? m.avgRating.toFixed(2) : '–'}</td></tr>`; }).join('')}</tbody></table></div>
-      <div class="card"><h3>Service status</h3><div class="sub">Where every requested service stands now</div><div class="chartbox"><canvas id="c4"></canvas></div></div>
+      <div class="card"><h3>Service outcomes</h3><div class="sub">What happened to each service at the Hub where it is offered</div><div class="chartbox"><canvas id="c4"></canvas></div></div>
       <div class="card"><h3>Top communities reached</h3><div class="sub">Unique beneficiaries by home community</div><div class="chartbox tall"><canvas id="c5"></canvas></div></div>
       <div class="card"><h3>Who we are reaching</h3><div class="sub">Unique beneficiaries by age group and gender</div>
         <div class="grid g2" style="gap:12px"><div class="chartbox"><canvas id="c6"></canvas></div><div class="chartbox"><canvas id="c7"></canvas></div></div></div>
@@ -1022,9 +1036,9 @@ async function drawDashboard() {
   chart('c1', 'bar', months.map(monthLabel), [
     { label: 'Visits', data: months.map(m => (byMonth[m] || []).length) },
     { label: 'Unique beneficiaries', type: 'line', data: months.map(m => uniq((byMonth[m] || []).map(r => r.visitor_id)).length) }]);
-  chart('c2', 'bar', cats.map(c => c.name), [{ label: 'Requested', data: reqByCat }, { label: 'Delivered', data: delByCat }], { horizontal: true });
+  chart('c2', 'bar', cats.map(c => c.name), [{ label: 'Requested', data: reqByCat }, { label: 'Provided', data: delByCat }], { horizontal: true });
   chart('c3', 'bar', hubsShown.map(h => h.name.replace(' Community Hub', '')), [{ label: 'Visits', data: hubsShown.map(h => uniq(rows.filter(r => r.hub_id === h.id).map(r => r.visit_id)).length) }]);
-  const c4 = chart('c4', 'bar', Object.values(STATUS).map(s => s.label), [{ label: 'Services', data: statusCounts, backgroundColor: ['#fab219', '#2a78d6', '#0ca30c', '#6250d6', '#ec835a', '#d03b3b'] }], { horizontal: true });
+  chart('c4', 'bar', OUT.map(o => o[1]), [{ label: 'Services', data: statusCounts, backgroundColor: OUT.map(o => o[2]) }], { horizontal: true });
   chart('c5', 'bar', comm.map(x => x[0]), [{ label: 'Beneficiaries', data: comm.map(x => x[1]) }], { horizontal: true });
   chart('c6', 'bar', AGE_GROUPS, [{ label: 'Beneficiaries', data: ageCounts }]);
   chart('c7', 'bar', GENDERS, [{ label: 'Beneficiaries', data: genCounts }]);
@@ -1035,6 +1049,27 @@ async function drawDashboard() {
    REPORT ENGINE — shared by Reports (Module 8) and Donor Impact (Module 6)
    A report = { title, subtitle, period, summary[], kpis[[label,value]], chart{type,labels,datasets,horizontal}, tables[{title, cols, rows}] }
    ===================================================================== */
+// numbers shown as "1 234" back to 1234
+const numOf = v => Number(String(v).replace(/[^\d.-]/g, '')) || 0;
+function barListHtml(t) {
+  const vi = t.value || 1, max = Math.max(1, ...t.rows.map(r => numOf(r[vi])));
+  return `<div class="card barcard"><h4>${esc(t.title)}</h4>${t.cols[vi] ? `<div class="sub">${esc(t.cols[vi])}${t.sub ? ' · ' + esc(t.cols[t.sub]) : ''}</div>` : ''}
+    ${t.rows.length ? t.rows.map(r => `<div class="bl"><div class="bl-l" title="${esc(r[0])}">${esc(r[0])}</div>
+      <div class="bl-t"><i style="width:${Math.max(2, 100 * numOf(r[vi]) / max).toFixed(1)}%"></i></div>
+      <div class="bl-v">${esc(r[vi])}${t.sub ? `<span>${esc(r[t.sub])}</span>` : ''}</div></div>`).join('') : '<div class="faint">No data for this selection.</div>'}</div>`;
+}
+function tableHtml(t) {
+  return `<h4>${esc(t.title)}</h4><div style="overflow:auto"><table class="t"><thead><tr>${t.cols.map((c, i) => `<th class="${i && t.num !== false ? 'n' : ''}">${esc(c)}</th>`).join('')}</tr></thead>
+      <tbody>${t.rows.map(r => `<tr>${r.map((v, i) => `<td class="${i && t.num !== false ? 'n' : ''}">${esc(v)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${t.cols.length}" class="faint">No data for this selection.</td></tr>`}</tbody></table></div>`;
+}
+// consecutive bar-list tables are laid out two per row
+function reportTablesHtml(tables) {
+  let html = '', group = [];
+  const flush = () => { if (group.length) html += `<div class="bargrid">${group.map(barListHtml).join('')}</div>`; group = []; };
+  tables.forEach(t => { if (t.viz) group.push(t); else { flush(); html += tableHtml(t); } });
+  flush();
+  return html;
+}
 function renderReport(el, rep) {
   killCharts();
   el.innerHTML = `<div class="report">
@@ -1043,8 +1078,7 @@ function renderReport(el, rep) {
     ${rep.kpis && rep.kpis.length ? `<div class="kpis">${rep.kpis.map(([l, v]) => `<div class="kpi"><div class="l">${esc(l)}</div><div class="v" style="font-size:22px">${esc(v)}</div></div>`).join('')}</div>` : ''}
     ${rep.summary && rep.summary.length ? `<div class="summary">${rep.summary.map(p => `<p>${esc(p)}</p>`).join('')}</div>` : ''}
     ${rep.chart ? `<h4>${esc(rep.chart.title || '')}</h4><div class="chartbox" style="height:${rep.chart.height || 280}px"><canvas id="repchart"></canvas></div>` : ''}
-    ${(rep.tables || []).map(t => `<h4>${esc(t.title)}</h4><div style="overflow:auto"><table class="t"><thead><tr>${t.cols.map((c, i) => `<th class="${i && t.num !== false ? 'n' : ''}">${esc(c)}</th>`).join('')}</tr></thead>
-      <tbody>${t.rows.map(r => `<tr>${r.map((v, i) => `<td class="${i && t.num !== false ? 'n' : ''}">${esc(v)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${t.cols.length}" class="faint">No data for this selection.</td></tr>`}</tbody></table></div>`).join('')}
+    ${reportTablesHtml(rep.tables || [])}
     ${rep.footnote ? `<div class="note" style="margin-top:18px">${esc(rep.footnote)}</div>` : ''}
   </div>`;
   if (rep.chart) chart('repchart', rep.chart.type || 'bar', rep.chart.labels, rep.chart.datasets, { horizontal: rep.chart.horizontal });
@@ -1057,7 +1091,7 @@ function exportPDF(rep) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const W = doc.internal.pageSize.getWidth(), M = 40;
   doc.setFillColor(11, 44, 70); doc.rect(0, 0, W, 64, 'F'); doc.setFillColor(76, 154, 42); doc.rect(0, 64, W, 3, 'F');
-  if (A.logoData) { doc.setFillColor(255, 255, 255); doc.roundedRect(W - M - 52, 6, 52, 52, 8, 8, 'F'); doc.addImage(A.logoData, 'PNG', W - M - 48, 10, 44, 44); }
+  if (A.logoData) { doc.setFillColor(255, 255, 255); doc.roundedRect(W - M - 52, 6, 52, 52, 8, 8, 'F'); doc.addImage(A.logoData, 'JPEG', W - M - 48, 10, 44, 44); }
   doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.text(A.ref.org.name, M, 28);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(CFG.appName + ' — ' + (CFG.fullName || '') + ' · generated ' + fmtDT(new Date()), M, 46);
   let y = 96;
@@ -1076,9 +1110,25 @@ function exportPDF(rep) {
     const h = (W - 2 * M) * cv.height / cv.width;
     if (y + h > 790) { doc.addPage(); y = 50; }
     doc.setFont('helvetica', 'bold'); doc.text(rep.chart.title || '', M, y + 4); doc.setFont('helvetica', 'normal');
-    doc.addImage(cv.toDataURL('image/png', 1), 'PNG', M, y + 12, W - 2 * M, h); y += h + 26;
+    const flat = document.createElement('canvas'); flat.width = cv.width; flat.height = cv.height; const fg = flat.getContext('2d'); fg.fillStyle = '#fff'; fg.fillRect(0, 0, flat.width, flat.height); fg.drawImage(cv, 0, 0);
+    doc.addImage(flat.toDataURL('image/jpeg', 0.92), 'JPEG', M, y + 12, W - 2 * M, h); y += h + 26;
   }
   (rep.tables || []).forEach(t => {
+    if (t.viz) {
+      const vi = t.value || 1, max = Math.max(1, ...t.rows.map(r => numOf(r[vi]))), rowH = 15, need = 26 + Math.max(1, t.rows.length) * rowH;
+      if (y + need > 800) { doc.addPage(); y = 50; }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(20, 32, 31); doc.text(t.title, M, y); doc.setFont('helvetica', 'normal'); y += 14;
+      const labW = 170, barX = M + labW, barW = W - 2 * M - labW - 90;
+      t.rows.forEach(r => {
+        doc.setFontSize(8.5); doc.setTextColor(40, 50, 60); doc.text(doc.splitTextToSize(String(r[0]), labW - 8)[0], M, y + 8);
+        doc.setFillColor(236, 241, 245); doc.roundedRect(barX, y + 1, barW, 9, 2, 2, 'F');
+        doc.setFillColor(42, 120, 214); doc.roundedRect(barX, y + 1, Math.max(2, barW * numOf(r[vi]) / max), 9, 2, 2, 'F');
+        doc.setFont('helvetica', 'bold'); doc.text(String(r[vi]), barX + barW + 8, y + 8); doc.setFont('helvetica', 'normal');
+        if (t.sub) { doc.setTextColor(120, 130, 140); doc.text(String(r[t.sub]), barX + barW + 44, y + 8); }
+        y += rowH;
+      });
+      y += 14; return;
+    }
     if (y > 740) { doc.addPage(); y = 50; }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.text(t.title, M, y); doc.setFont('helvetica', 'normal');
     doc.autoTable({ startY: y + 8, margin: { left: M, right: M }, head: [t.cols], body: t.rows.length ? t.rows.map(r => r.map(String)) : [['No data']],
@@ -1141,11 +1191,11 @@ function donorReport(r) {
   const T = r.totals || {};
   const months = (r.by_month || []);
   const perBen = T.unique_beneficiaries ? r.total_funding / T.unique_beneficiaries : null;
-  const progLines = (r.by_programme || []).map(p => `${p.programme}: ${fmtN(p.unique)} people reached through ${fmtN(p.interactions)} service interactions (${fmtN(p.completed)} completed, ${fmtN(p.referred)} referred on)${p.avg_rating ? ', rated ' + Number(p.avg_rating).toFixed(1) + '/5' : ''}.`);
+  const progLines = (r.by_programme || []).map(p => `${p.programme}: ${fmtN(p.unique)} people reached through ${fmtN(p.interactions)} service interactions (${fmtN(p.completed)} provided directly, ${fmtN(p.referred)} referred on)${p.avg_rating ? ', rated ' + Number(p.avg_rating).toFixed(1) + '/5' : ''}.`);
   return {
     title: 'Donor Impact Report', subtitle: r.donor ? r.donor.name : '', period: fmtDate(r.period.from) + ' – ' + fmtDate(r.period.to),
     kpis: [['Funding allocated', fmtR(r.total_funding)], ['Unique beneficiaries', fmtN(T.unique_beneficiaries)], ['Service interactions', fmtN(T.interactions)],
-           ['New beneficiaries', fmtN(T.new_beneficiaries)], ['Services completed', fmtN(T.completed)], ['Referrals', fmtN(T.referred)],
+           ['New beneficiaries', fmtN(T.new_beneficiaries)], ['Services provided', fmtN(T.completed)], ['Referrals', fmtN(T.referred)],
            ['Requests resolved', fmtPct(T.resolved_pct)], ['Avg satisfaction', T.avg_rating ? Number(T.avg_rating).toFixed(2) + '/5' : '–'],
            ['Hubs reached', fmtN(T.hubs_reached)], ['Communities reached', fmtN(T.communities_reached)]],
     summary: [
@@ -1157,15 +1207,15 @@ function donorReport(r) {
     chart: { title: 'People reached per month', labels: months.map(m => monthLabel(m.label)), datasets: [{ label: 'Service interactions', data: months.map(m => m.value) }, { label: 'Unique beneficiaries', type: 'line', data: months.map(m => m.unique) }] },
     tables: [
       { title: 'Funding allocations', sheet: 'Allocations', cols: ['Programme', 'Hub', 'Amount', 'From', 'To'], num: false, rows: (r.allocations || []).map(a => [a.programme, a.hub, fmtR(a.amount), fmtDate(a.start), fmtDate(a.end)]) },
-      { title: 'Programme performance', sheet: 'Programmes', cols: ['Programme', 'Funding', 'Unique beneficiaries', 'Interactions', 'Completed', 'Referred', 'Avg rating', 'Funding per beneficiary'],
+      { title: 'Programme performance', sheet: 'Programmes', cols: ['Programme', 'Funding', 'Unique beneficiaries', 'Interactions', 'Provided', 'Referred', 'Avg rating', 'Funding per beneficiary'],
         rows: (r.by_programme || []).map(p => [p.programme, fmtR(p.funding), fmtN(p.unique), fmtN(p.interactions), fmtN(p.completed), fmtN(p.referred), p.avg_rating ? Number(p.avg_rating).toFixed(2) : '–', p.unique ? fmtR(p.funding / p.unique) : '–']) },
-      { title: 'Reach by Hub', sheet: 'Hubs', cols: ['Hub', 'Interactions', 'Unique beneficiaries'], rows: (r.by_hub || []).map(x => [x.label, fmtN(x.value), fmtN(x.unique)]) },
-      { title: 'Services delivered by category', sheet: 'Categories', cols: ['Service category', 'Interactions'], rows: (r.by_category || []).map(x => [x.label, fmtN(x.value)]) },
-      { title: 'Beneficiaries by age group', sheet: 'Age', cols: ['Age group', 'Beneficiaries'], rows: (r.by_age || []).map(x => [x.label, fmtN(x.value)]) },
-      { title: 'Beneficiaries by gender', sheet: 'Gender', cols: ['Gender', 'Beneficiaries'], rows: (r.by_gender || []).map(x => [x.label, fmtN(x.value)]) },
-      { title: 'Top communities', sheet: 'Communities', cols: ['Community', 'Beneficiaries'], rows: (r.by_community || []).map(x => [x.label, fmtN(x.value)]) }
+      { title: 'Reach by Hub', sheet: 'Hubs', viz: true, value: 1, sub: 2, cols: ['Hub', 'Interactions', 'Unique beneficiaries'], rows: (r.by_hub || []).map(x => [x.label, fmtN(x.value), fmtN(x.unique) + ' people']) },
+      { title: 'Services provided by category', sheet: 'Categories', viz: true, cols: ['Service category', 'Interactions'], rows: (r.by_category || []).map(x => [x.label, fmtN(x.value)]) },
+      { title: 'Beneficiaries by age group', sheet: 'Age', viz: true, cols: ['Age group', 'Beneficiaries'], rows: (r.by_age || []).slice().sort((a, b) => ageRank(a.label) - ageRank(b.label)).map(x => [x.label, fmtN(x.value)]) },
+      { title: 'Beneficiaries by gender', sheet: 'Gender', viz: true, cols: ['Gender', 'Beneficiaries'], rows: (r.by_gender || []).map(x => [x.label, fmtN(x.value)]) },
+      { title: 'Top communities', sheet: 'Communities', viz: true, cols: ['Community', 'Beneficiaries'], rows: (r.by_community || []).map(x => [x.label, fmtN(x.value)]) }
     ],
-    footnote: 'These figures measure outputs (reach and services delivered) and early outcomes (resolution and satisfaction). They are not a financial or social return on investment (SROI) calculation, which needs additional outcome verification and an agreed methodology. No personal information about beneficiaries is included in this report.'
+    footnote: 'These figures measure outputs (reach and services provided) and early outcomes (resolution and satisfaction). They are not a financial or social return on investment (SROI) calculation, which needs additional outcome verification and an agreed methodology. No personal information about beneficiaries is included in this report.'
   };
 }
 
@@ -1221,7 +1271,7 @@ async function drawReport() {
   const visits = Object.values(groupBy(rows, r => r.visit_id)).map(g => g[0]);
   const delivered = r => r.status === 'completed' || r.status === 'referred';
   const stdK = [['Visits', fmtN(M.visits)], ['Unique beneficiaries', fmtN(M.unique)], ['New beneficiaries', fmtN(M.newBen)], ['Services delivered', fmtN(M.delivered)],
-                ['Outstanding', fmtN(M.outstanding)], ['Referrals', fmtN(M.referrals)], ['Resolution', fmtPct(M.resolution)], ['Satisfaction', M.avgRating ? M.avgRating.toFixed(2) + '/5' : '–']];
+                ['Not yet recorded', fmtN(M.outstanding)], ['Referrals', fmtN(M.referrals)], ['Resolution', fmtPct(M.resolution)], ['Satisfaction', M.avgRating ? M.avgRating.toFixed(2) + '/5' : '–']];
   const catTable = () => A.ref.cats.map(c => { const rr = rows.filter(r => r.category_id === c.id); return [c.name, fmtN(rr.length), fmtN(rr.filter(delivered).length), fmtN(rr.filter(r => r.status === 'referred').length), fmtN(rr.filter(r => !r.is_available).length), fmtN(uniq(rr.map(r => r.visitor_id)).length)]; }).filter(r => r[1] !== '0');
   let rep;
 
@@ -1245,9 +1295,9 @@ async function drawReport() {
         M.unmet ? `Visitors also asked for ${fmtN(M.unmet)} services that their Hub does not currently offer — see the Unmet Community Needs report.` : ''].filter(Boolean),
       chart: t === 'ytd' ? { title: 'Visits and beneficiaries per month', labels: months.map(monthLabel), datasets: [{ label: 'Visits', data: months.map(m => (bm[m] || []).length) }, { label: 'Unique beneficiaries', type: 'line', data: months.map(m => uniq((bm[m] || []).map(r => r.visitor_id)).length) }] }
         : { title: 'Visits by Hub', labels: hubs.map(h => h.name.replace(' Community Hub', '')), datasets: [{ label: 'Visits', data: hubs.map(h => visits.filter(v => v.hub_id === h.id).length) }] },
-      tables: [{ title: 'Hub performance', sheet: 'Hubs', cols: ['Hub', 'Visits', 'Unique', 'New', 'Delivered', 'Referrals', 'Outstanding', 'Resolution', 'Rating'],
+      tables: [{ title: 'Hub performance', sheet: 'Hubs', cols: ['Hub', 'Visits', 'Unique', 'New', 'Provided', 'Referrals', 'Not recorded', 'Resolution', 'Rating'],
           rows: hubs.map(h => { const m = metrics(rows.filter(r => r.hub_id === h.id)); return [h.name, fmtN(m.visits), fmtN(m.unique), fmtN(m.newBen), fmtN(m.delivered), fmtN(m.referrals), fmtN(m.outstanding), fmtPct(m.resolution), m.avgRating ? m.avgRating.toFixed(2) : '–']; }) },
-        { title: 'Services by category', sheet: 'Services', cols: ['Category', 'Requested', 'Delivered', 'Referred', 'Unmet', 'Beneficiaries'], rows: catTable() }] };
+        { title: 'Services by category', sheet: 'Services', cols: ['Category', 'Requested', 'Provided', 'Referred', 'Unmet', 'Beneficiaries'], rows: catTable() }] };
     if (t === 'ytd') rep.tables.unshift({ title: 'Monthly trend', sheet: 'Monthly', cols: ['Month', 'Visits', 'Unique beneficiaries'], rows: months.map(m => [monthLabel(m), fmtN((bm[m] || []).length), fmtN(uniq((bm[m] || []).map(r => r.visitor_id)).length)]) });
   } else if (t === 'quarterly' || t === 'reach') {
     const progs = A.ref.progs;
@@ -1256,7 +1306,7 @@ async function drawReport() {
       kpis: [['Programmes active', fmtN(pr.length)], ['Participants', fmtN(uniq(rows.filter(r => r.programme_id).map(r => r.visitor_id)).length)], ['Interactions', fmtN(rows.filter(r => r.programme_id).length)], ['Resolution', fmtPct(M.resolution)], ['Satisfaction', M.avgRating ? M.avgRating.toFixed(2) + '/5' : '–']],
       summary: pr.map(x => `${x.p.name} reached ${fmtN(x.m.unique)} participants through ${fmtN(x.rr.length)} interactions; ${fmtN(x.repeat)} participants engaged more than once. Resolution ${fmtPct(x.m.resolution)}, satisfaction ${x.m.avgRating ? x.m.avgRating.toFixed(1) : '–'}/5.`),
       chart: { title: 'Participants per programme', horizontal: true, height: Math.max(180, pr.length * 42), labels: pr.map(x => x.p.name), datasets: [{ label: 'Unique participants', data: pr.map(x => x.m.unique) }] },
-      tables: [{ title: 'Programme performance', sheet: 'Programmes', cols: ['Programme', 'Participants', 'Repeat participants', 'Interactions', 'Delivered', 'Referred', 'Outstanding', 'Resolution', 'Rating'],
+      tables: [{ title: 'Programme performance', sheet: 'Programmes', cols: ['Programme', 'Participants', 'Repeat participants', 'Interactions', 'Provided', 'Referred', 'Not recorded', 'Resolution', 'Rating'],
         rows: pr.map(x => [x.p.name, fmtN(x.m.unique), fmtN(x.repeat), fmtN(x.rr.length), fmtN(x.m.delivered), fmtN(x.m.referrals), fmtN(x.m.outstanding), fmtPct(x.m.resolution), x.m.avgRating ? x.m.avgRating.toFixed(2) : '–']) }] };
     if (t === 'reach') rep.tables.push({ title: 'Participants by age group and programme', sheet: 'Age x Programme', cols: ['Programme', ...AGE_GROUPS], rows: pr.map(x => [x.p.name, ...AGE_GROUPS.map(a => fmtN(uniq(x.rr.filter(r => r.age_group === a).map(r => r.visitor_id)).length))]) });
   } else if (t === 'demographic') {
@@ -1265,16 +1315,16 @@ async function drawReport() {
     rep = { title: 'Community Demographic Report', subtitle: hubName, period, kpis: [['Unique beneficiaries', fmtN(people.length)], ['Communities', fmtN(M.communities)], ['Female', fmtPct(pct(people.filter(p => p.gender === 'Female').length, people.length))], ['Youth (18–34)', fmtPct(pct(people.filter(p => ['18-24', '25-34'].includes(p.age_group)).length, people.length))], ['Under 18', fmtN(people.filter(p => p.age_group === 'Under 18').length)]],
       summary: [`${fmtN(people.length)} different people from ${fmtN(M.communities)} communities used the Hubs in this period. The largest groups were from ${comm.slice(0, 3).map(c => c[0] + ' (' + c[1] + ')').join(', ')}.`],
       chart: { title: 'Beneficiaries by age group', labels: AGE_GROUPS, datasets: [{ label: 'Beneficiaries', data: AGE_GROUPS.map(a => people.filter(p => p.age_group === a).length) }] },
-      tables: [{ title: 'By community', sheet: 'Community', cols: ['Community', 'Beneficiaries', 'Share'], rows: comm.map(([k, n]) => [k, fmtN(n), fmtPct(pct(n, people.length))]) },
-        { title: 'By gender', sheet: 'Gender', cols: ['Gender', 'Beneficiaries', 'Share'], rows: countBy(people, p => p.gender || 'Not stated').map(([k, n]) => [k, fmtN(n), fmtPct(pct(n, people.length))]) },
-        { title: 'By age group', sheet: 'Age', cols: ['Age group', 'Beneficiaries', 'Share'], rows: AGE_GROUPS.map(a => { const n = people.filter(p => p.age_group === a).length; return [a, fmtN(n), fmtPct(pct(n, people.length))]; }) },
+      tables: [{ title: 'By community', sheet: 'Community', viz: true, value: 1, sub: 2, cols: ['Community', 'Beneficiaries', 'Share'], rows: comm.map(([k, n]) => [k, fmtN(n), fmtPct(pct(n, people.length))]) },
+        { title: 'By gender', sheet: 'Gender', viz: true, value: 1, sub: 2, cols: ['Gender', 'Beneficiaries', 'Share'], rows: countBy(people, p => p.gender || 'Not stated').map(([k, n]) => [k, fmtN(n), fmtPct(pct(n, people.length))]) },
+        { title: 'By age group', sheet: 'Age', viz: true, value: 1, sub: 2, cols: ['Age group', 'Beneficiaries', 'Share'], rows: AGE_GROUPS.map(a => { const n = people.filter(p => p.age_group === a).length; return [a, fmtN(n), fmtPct(pct(n, people.length))]; }) },
         { title: 'Age group by gender', sheet: 'Age x Gender', cols: ['Age group', ...GENDERS], rows: AGE_GROUPS.map(a => [a, ...GENDERS.map(g => fmtN(people.filter(p => p.age_group === a && p.gender === g).length))]) }] };
   } else if (t === 'demand') {
     const ct = catTable();
-    rep = { title: 'Service Demand Analysis', subtitle: hubName, period, kpis: [['Services requested', fmtN(M.requested)], ['Delivered', fmtN(M.delivered)], ['Outstanding', fmtN(M.outstanding)], ['Unmet (not offered)', fmtN(M.unmet)], ['Avg services per visit', M.visits ? (M.requested / M.visits).toFixed(2) : '–']],
+    rep = { title: 'Service Demand Analysis', subtitle: hubName, period, kpis: [['Services requested', fmtN(M.requested)], ['Delivered', fmtN(M.delivered)], ['Not yet recorded', fmtN(M.outstanding)], ['Unmet (not offered)', fmtN(M.unmet)], ['Avg services per visit', M.visits ? (M.requested / M.visits).toFixed(2) : '–']],
       summary: [`The most requested services were ${ct.slice().sort((a, b) => Number(b[1].replace(/\D/g, '')) - Number(a[1].replace(/\D/g, ''))).slice(0, 3).map(r => r[0]).join(', ')}. Visitors requested ${(M.visits ? M.requested / M.visits : 0).toFixed(1)} services per visit on average.`],
-      chart: { title: 'Requested vs delivered by category', horizontal: true, height: 320, labels: A.ref.cats.map(c => c.name), datasets: [{ label: 'Requested', data: A.ref.cats.map(c => rows.filter(r => r.category_id === c.id).length) }, { label: 'Delivered', data: A.ref.cats.map(c => rows.filter(r => r.category_id === c.id && delivered(r)).length) }] },
-      tables: [{ title: 'Demand by service category', sheet: 'Demand', cols: ['Category', 'Requested', 'Delivered', 'Referred', 'Unmet', 'Beneficiaries'], rows: ct },
+      chart: { title: 'Requested vs provided by category', horizontal: true, height: 320, labels: A.ref.cats.map(c => c.name), datasets: [{ label: 'Requested', data: A.ref.cats.map(c => rows.filter(r => r.category_id === c.id).length) }, { label: 'Provided', data: A.ref.cats.map(c => rows.filter(r => r.category_id === c.id && delivered(r)).length) }] },
+      tables: [{ title: 'Demand by service category', sheet: 'Demand', cols: ['Category', 'Requested', 'Provided', 'Referred', 'Unmet', 'Beneficiaries'], rows: ct },
         { title: 'Demand by Hub and category', sheet: 'Hub x Category', cols: ['Hub', ...A.ref.cats.map(c => c.name)], rows: myHubs().filter(h => !RS.hub || h.id === RS.hub).map(h => [h.name, ...A.ref.cats.map(c => fmtN(rows.filter(r => r.hub_id === h.id && r.category_id === c.id).length))]) }] };
   } else if (t === 'satisfaction') {
     const fbs = await all(() => { let qq = sb.from('feedback').select('hub_id, rating, assisted, staff_helpful, visit_again, improve, additional_needs, created_at').eq('org_id', A.m.org_id)
