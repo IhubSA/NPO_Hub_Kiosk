@@ -122,6 +122,7 @@
   .keypad button { height:76px; border-radius:20px; border:0; background:#f1f5f4; color:var(--ink); font-size:30px; font-weight:700; }
   .keypad button:active { background:var(--soft); transform:scale(.97); }
   .keypad button.fn { font-size:18px; color:var(--muted); }
+  .altlink { display:block; margin-top:22px; background:none; border:0; padding:10px 0; color:var(--brand); font-weight:700; font-size:18px; text-decoration:underline; text-underline-offset:4px; }
   .welcome-back { display:inline-flex; gap:10px; align-items:center; background:var(--soft); color:var(--brand); border-radius:999px; padding:10px 18px; font-weight:800; margin-bottom:12px; font-size:17px; }
   .section-note { font-size:16px; color:var(--muted); margin:-4px 0 14px; }
   .faces { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
@@ -329,7 +330,7 @@
         <div class="tapnote"><i></i>Tap a button to begin — it takes about a minute</div>
       </div>`;
     bind('start', 'click', () => go('consent'));
-    bind('givefb', 'click', () => { fb = { ticket: '', last4: '', field: 'ticket' }; go('fbFind'); });
+    bind('givefb', 'click', () => { fb = { mode: 'mobile', mobile: '', ticket: '', last4: '', field: 'ticket' }; go('fbFind'); });
   }
 
   function rConsent() {
@@ -480,7 +481,7 @@
     $app.innerHTML = `<div class="done">
         ${s.ticket ? `<div class="ticketcard"><small>Your ticket number</small><div class="num">${esc(s.ticket)}</div></div>` : '<div class="tick">✓</div>'}
         <h1>Thank you, ${esc(first)}!</h1>
-        <p>${s.ticket ? 'Please take a seat. A staff member will call your ticket number shortly.' : 'You are signed in. We are offline at the moment, so please tell the staff member at the desk your name.'}</p>
+        <p>${s.ticket ? 'Please take a seat. A staff member will call your ticket number shortly.<br><br>After you have been helped, come back to this screen and tap <b>Give feedback</b>. You will only need your mobile number.' : 'You are signed in. We are offline at the moment, so please tell the staff member at the desk your name.'}</p>
         <button class="whitebtn" id="fin">Done</button>
         <div class="countdown">Returning to the start screen in <b id="cd">15</b> seconds</div></div>`;
     bind('fin', 'click', reset);
@@ -489,14 +490,39 @@
 
   // ---------- feedback ----------
   function rFbFind() {
+    const hubName = (cfg && cfg.hub && cfg.hub.name) || 'this Hub';
+    if (fb.mode === 'mobile') {
+      const d = fb.mobile;
+      panel({ title: 'Give feedback', lead: 'Enter the mobile number you used when you signed in today.', back: 'Cancel', next: s.busy ? 'Looking…' : 'Continue', nextDisabled: s.busy, steps: false,
+        body: `<div class="two"><div><label class="f" style="margin-top:4px">Your mobile number</label>
+          <div class="display on" id="fbm">${d ? esc(fmtMobile(d)) : '<span class="ph">082 123 4567</span>'}</div>
+          <button class="altlink" id="useticket">I'd rather use my ticket number</button></div><div>${keypadHtml()}</div></div>` });
+      bindKeypad(() => fb.mobile, v => fb.mobile = v, 10, () => { const el = document.getElementById('fbm'); el.innerHTML = fb.mobile ? esc(fmtMobile(fb.mobile)) : '<span class="ph">082 123 4567</span>'; });
+      bind('useticket', 'click', () => { fb.mode = 'ticket'; fb.field = 'ticket'; s.error = ''; rFbFind(); });
+      bind('back', 'click', reset);
+      bind('next', 'click', async () => {
+        if (!/^0\d{9}$/.test(fb.mobile)) return showErr('Please enter your 10-digit mobile number, e.g. 082 123 4567.');
+        s.busy = true; rFbFind();
+        try {
+          const { data, error } = await sb.rpc('kiosk_feedback_by_mobile', { p_token: token, p_mobile: fb.mobile });
+          if (error) throw error;
+          s.busy = false;
+          if (!data.found) { rFbFind(); return showErr(`We couldn't find a recent visit to ${hubName} for that number, or you have already given feedback. Please ask a staff member to help.`); }
+          await startFeedbackByToken(data.feedback_token, false, { private: true, today: data.today, date: data.visit_date });
+        } catch (e) { s.busy = false; rFbFind(); showErr(isNetwork(e) ? 'No internet connection right now. Please try again later.' : e.message); }
+      });
+      return;
+    }
     const fieldBox = (k, label, ph) => `<label class="f">${label}</label><button class="display ${fb.field === k ? 'on' : ''}" data-field="${k}">${fb[k] ? esc(fb[k]) : `<span class="ph">${ph}</span>`}</button>`;
     panel({ title: 'Give feedback', lead: 'Enter the ticket number you received and the last 4 digits of your mobile number.', back: 'Cancel', next: s.busy ? 'Looking…' : 'Continue', nextDisabled: s.busy, steps: false,
-      body: `<div class="two"><div>${fieldBox('ticket', 'Ticket number', 'e.g. 12')}${fieldBox('last4', 'Last 4 digits of your mobile', 'e.g. 4567')}</div><div>${keypadHtml()}</div></div>` });
+      body: `<div class="two"><div>${fieldBox('ticket', 'Ticket number', 'e.g. 12')}${fieldBox('last4', 'Last 4 digits of your mobile', 'e.g. 4567')}
+        <button class="altlink" id="usemobile">Use my mobile number instead</button></div><div>${keypadHtml()}</div></div>` });
     document.querySelectorAll('[data-field]').forEach(b => b.addEventListener('click', () => { fb.field = b.dataset.field; rFbFind(); }));
-    bindKeypad(() => fb[fb.field], v => fb[fb.field] = v, fb.field === 'ticket' ? 4 : 4, () => {
+    bindKeypad(() => fb[fb.field], v => fb[fb.field] = v, 4, () => {
       if (fb.field === 'ticket' && fb.ticket.length >= 3) fb.field = 'last4';
       rFbFind();
     });
+    bind('usemobile', 'click', () => { fb.mode = 'mobile'; s.error = ''; rFbFind(); });
     bind('back', 'click', reset);
     bind('next', 'click', async () => {
       if (!fb.ticket || fb.last4.length !== 4) return showErr('Please enter your ticket number and 4 digits.');
@@ -506,19 +532,19 @@
         if (error) throw error;
         s.busy = false;
         if (!data.found) { rFbFind(); return showErr('We could not find that visit, or feedback was already given. Please ask a staff member.'); }
-        await startFeedbackByToken(data.feedback_token, false);
+        await startFeedbackByToken(data.feedback_token, false, { private: true });
       } catch (e) { s.busy = false; rFbFind(); showErr(isNetwork(e) ? 'No internet connection right now. Please try again later.' : e.message); }
     });
   }
 
-  async function startFeedbackByToken(t, standalone) {
+  async function startFeedbackByToken(t, standalone, opts = {}) {
     try {
       const { data, error } = await sb.rpc('kiosk_feedback_info', { p_fb: t });
       if (error) throw error;
       if (!data.found) { return message('Feedback link not found', 'This feedback link is not valid. Please ask a staff member.'); }
       if (!cfg) { cfg = { hub: data.hub, org: data.org, settings: data.settings, categories: [], communities: [] }; applyBrand(data.hub.colour); }
       if (data.already) { return message('Thank you!', 'Feedback for this visit has already been received.'); }
-      fb = { token: t, standalone, services: data.services || [], a: {} };
+      fb = { token: t, standalone, services: opts.private ? [] : (data.services || []), when: opts, a: {} };
       go('fbForm');
     } catch (e) { message('Something went wrong', isNetwork(e) ? 'No internet connection right now.' : e.message); }
   }
@@ -530,7 +556,7 @@
     const opt = (k, vals) => `<div class="row3">${vals.map(([v, l]) => `<button class="tile ${a[k] === v ? 'sel' : ''}" data-q="${k}" data-v="${v}">${l}</button>`).join('')}</div>`;
     const faces = ['😞', '🙁', '😐', '🙂', '😄'], words = ['Poor', 'Fair', 'Good', 'Very good', 'Excellent'];
     let n = 0; const num = () => ++n + '. ';
-    panel({ title: 'How did we do?', lead: (fb.services.length ? 'You were helped with: <b>' + esc(fb.services.join(', ')) + '</b>. ' : '') + 'This takes less than a minute.',
+    panel({ title: 'How did we do?', lead: (fb.services.length ? 'You were helped with: <b>' + esc(fb.services.join(', ')) + '</b>. ' : `About your visit ${fb.when && fb.when.today === true ? 'today ' : fb.when && fb.when.date ? 'on ' + esc(new Date(fb.when.date + 'T12:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' })) + ' ' : ''}to <b>${esc((cfg && cfg.hub && cfg.hub.name) || 'the Hub')}</b>. `) + 'This takes less than a minute.',
       back: 'Cancel', next: s.busy ? 'Sending…' : 'Send feedback', nextDisabled: s.busy, steps: false,
       body: `
       ${on('rating') ? `<div class="q"><h3>${num()}How would you rate the service you received?</h3>
