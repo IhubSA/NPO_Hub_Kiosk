@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="kiosk.webmanifest">
+<link rel="icon" href="kiosk-icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="kiosk-icon.svg">
+<title>Visitor Sign-in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand:#0f766e;
+    --deep:color-mix(in srgb, var(--brand) 55%, #04121a);
+    --glow:color-mix(in srgb, var(--brand) 45%, #ffffff);
+    --soft:color-mix(in srgb, var(--brand) 10%, #ffffff);
+    --ink:#10201f; --muted:#5b6b69; --line:#dfe6e5; --danger:#c0281b;
+    --glass:rgba(255,255,255,.13); --glass-line:rgba(255,255,255,.32);
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; overflow:hidden; font-family:Figtree,system-ui,-apple-system,Segoe UI,Roboto,sans-serif; font-size:20px; color:#fff; background:#04121a; }
+  body { overscroll-behavior:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  input,textarea { user-select:text; -webkit-user-select:text; }
+  button { font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; }
+
+  /* ---------- stage ---------- */
+  .kiosk { position:fixed; inset:0; display:flex; flex-direction:column;
+           padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+           background:
+             radial-gradient(1200px 700px at 85% -10%, color-mix(in srgb, var(--glow) 70%, transparent) 0%, transparent 60%),
+             radial-gradient(900px 600px at -10% 110%, color-mix(in srgb, var(--brand) 80%, transparent) 0%, transparent 60%),
+             linear-gradient(150deg, var(--deep) 0%, var(--brand) 55%, var(--glow) 130%);
+           transition:background .4s; }
+  .kiosk::before { content:''; position:absolute; inset:0; pointer-events:none;
+           background:radial-gradient(circle at 50% 120%, rgba(255,255,255,.18), transparent 55%),
+                      repeating-linear-gradient(115deg, rgba(255,255,255,.012) 0 2px, transparent 2px 26px); }
+  .top { position:relative; display:flex; align-items:center; gap:16px; padding:20px 32px 8px; }
+  .mark { width:52px; height:52px; border-radius:16px; background:rgba(255,255,255,.95); color:var(--brand); display:grid; place-items:center; font-weight:800; font-size:20px; letter-spacing:-.02em; flex:none; box-shadow:0 10px 30px -12px rgba(0,0,0,.45); }
+  .top .names b { display:block; font-size:19px; font-weight:700; }
+  .top .names span { font-size:14px; opacity:.75; }
+  .top .sp { flex:1; }
+  .clock { text-align:right; line-height:1.1; }
+  .clock b { font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; display:block; }
+  .clock span { font-size:13px; opacity:.75; }
+  .pill { font-size:13px; padding:7px 13px; border-radius:999px; background:rgba(255,255,255,.16); border:1px solid var(--glass-line); font-weight:600; white-space:nowrap; }
+  .pill.warn { background:#fde7e4; color:var(--danger); border-color:#fde7e4; }
+  .ghostbtn { border:1px solid var(--glass-line); background:var(--glass); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-radius:999px; padding:11px 20px; font-weight:700; font-size:16px; }
+  .ghostbtn:active { transform:scale(.97); }
+  .stage { position:relative; flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:12px 32px 18px; }
+  .foot { position:relative; display:flex; justify-content:center; gap:10px; align-items:center; padding:0 24px 18px; font-size:13px; opacity:.8; }
+
+  /* ---------- welcome ---------- */
+  .welcome { width:100%; max-width:1100px; text-align:center; display:flex; flex-direction:column; align-items:center; animation:rise .5s ease both; }
+  .welcome .bigmark { width:112px; height:112px; border-radius:32px; background:rgba(255,255,255,.96); color:var(--brand); display:grid; place-items:center; font-size:46px; font-weight:800; letter-spacing:-.03em; box-shadow:0 24px 60px -24px rgba(0,0,0,.6), 0 0 0 10px rgba(255,255,255,.08); margin-bottom:26px; }
+  .welcome h1 { font-size:clamp(34px, 5vw, 58px); line-height:1.05; margin:0; letter-spacing:-.025em; font-weight:800; text-shadow:0 2px 24px rgba(0,0,0,.18); }
+  .welcome .msg { font-size:clamp(18px, 2.1vw, 23px); opacity:.88; margin:14px 0 0; max-width:760px; line-height:1.45; }
+  .welcome .ask { font-size:clamp(20px, 2.4vw, 26px); font-weight:600; margin:34px 0 22px; opacity:.95; }
+  .choices { display:grid; grid-template-columns:1fr 1fr; gap:22px; width:100%; max-width:920px; }
+  .choice { position:relative; text-align:left; border:1px solid var(--glass-line); background:linear-gradient(160deg, rgba(255,255,255,.22), rgba(255,255,255,.08)); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+            border-radius:28px; padding:28px 30px; min-height:170px; display:flex; gap:22px; align-items:center; box-shadow:0 20px 50px -28px rgba(0,0,0,.7); transition:transform .12s, background .2s; }
+  .choice:active { transform:scale(.98); }
+  .choice.primary { background:rgba(255,255,255,.97); color:var(--ink); border-color:#fff; }
+  .choice .ic { width:76px; height:76px; border-radius:22px; display:grid; place-items:center; font-size:36px; flex:none; background:rgba(255,255,255,.18); }
+  .choice.primary .ic { background:var(--brand); color:#fff; }
+  .choice b { display:block; font-size:clamp(22px, 2.4vw, 28px); font-weight:800; letter-spacing:-.01em; }
+  .choice span { display:block; font-size:16px; opacity:.78; margin-top:6px; line-height:1.35; }
+  .choice .arrow { margin-left:auto; font-size:30px; opacity:.6; }
+  .tapnote { margin-top:26px; font-size:15px; opacity:.75; display:flex; gap:10px; align-items:center; }
+  .tapnote i { width:10px; height:10px; border-radius:50%; background:#7CF7C9; box-shadow:0 0 0 0 rgba(124,247,201,.7); animation:pulse 2s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(124,247,201,.6)} 70%{box-shadow:0 0 0 14px rgba(124,247,201,0)} 100%{box-shadow:0 0 0 0 rgba(124,247,201,0)} }
+  @keyframes rise { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+
+  /* ---------- panel (inner screens) ---------- */
+  .panel { width:100%; max-width:1140px; max-height:100%; background:#fff; color:var(--ink); border-radius:32px; box-shadow:0 40px 90px -40px rgba(0,0,0,.65); display:flex; flex-direction:column; overflow:hidden; animation:rise .35s ease both; }
+  .phead { padding:26px 36px 4px; }
+  .steps { display:flex; gap:8px; margin-bottom:18px; }
+  .steps i { flex:1; height:7px; border-radius:7px; background:#e8eeed; }
+  .steps i.on { background:var(--brand); }
+  .phead h2 { font-size:clamp(28px, 3.2vw, 38px); margin:0; letter-spacing:-.02em; line-height:1.1; }
+  .phead p { font-size:19px; color:var(--muted); margin:8px 0 0; line-height:1.4; }
+  .pbody { padding:18px 36px 10px; overflow:auto; flex:1; min-height:0; }
+  .pfoot { display:flex; gap:14px; padding:16px 36px 26px; border-top:1px solid #eef2f1; background:#fff; }
+  .btn { border:0; border-radius:20px; padding:20px 32px; min-height:72px; font-size:22px; font-weight:800; background:var(--brand); color:#fff; box-shadow:0 12px 26px -14px var(--brand); }
+  .btn.grow { flex:1; }
+  .btn.ghost { background:#f1f5f4; color:var(--ink); box-shadow:none; }
+  .btn:disabled { opacity:.35; }
+  .btn:active:not(:disabled) { transform:scale(.98); }
+  .err { color:var(--danger); font-weight:700; min-height:26px; font-size:18px; margin-top:10px; }
+  label.f { display:block; font-weight:700; margin:20px 0 10px; font-size:18px; }
+  label.f small { color:var(--muted); font-weight:500; }
+  input.t, textarea.t { width:100%; font:inherit; font-size:26px; padding:18px 22px; border:2px solid var(--line); border-radius:18px; background:#fbfcfc; outline:none; color:var(--ink); }
+  textarea.t { font-size:20px; min-height:96px; resize:none; }
+  input.t:focus, textarea.t:focus, .display.on { border-color:var(--brand); box-shadow:0 0 0 5px var(--soft); background:#fff; }
+  .grid { display:grid; gap:14px; grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .grid.five { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .tile { position:relative; background:#fff; border:2px solid var(--line); border-radius:22px; padding:18px; min-height:86px; text-align:left; font-size:19px; font-weight:700; color:var(--ink); display:flex; flex-direction:column; justify-content:center; gap:4px; transition:transform .08s, border-color .15s, background .15s; }
+  .tile:active { transform:scale(.97); }
+  .tile .ico { font-size:34px; line-height:1; margin-bottom:8px; }
+  .tile .ex { font-size:14px; color:var(--muted); font-weight:500; line-height:1.3; }
+  .tile.svc { min-height:150px; justify-content:flex-start; }
+  .tile.sel { border-color:var(--brand); background:var(--soft); }
+  .tile.sel::after { content:'✓'; position:absolute; top:12px; right:12px; width:30px; height:30px; border-radius:50%; background:var(--brand); color:#fff; font-size:16px; display:grid; place-items:center; }
+  .tile.dashed { border-style:dashed; background:#fafbfb; }
+  .tile.center { align-items:center; text-align:center; }
+  .notice { background:#f6f9f8; border-radius:20px; padding:22px 26px; font-size:19px; line-height:1.6; color:#2a3a38; }
+  .check { display:flex; gap:18px; align-items:center; border:2px solid var(--line); border-radius:20px; padding:20px 22px; margin-top:16px; font-weight:700; font-size:19px; text-align:left; width:100%; background:#fff; color:var(--ink); }
+  .check .box { width:40px; height:40px; border-radius:12px; border:2px solid #c9d4d2; flex:none; display:grid; place-items:center; font-size:22px; color:#fff; }
+  .check.on { border-color:var(--brand); background:var(--soft); }
+  .check.on .box { background:var(--brand); border-color:var(--brand); }
+  .two { display:grid; grid-template-columns:1.05fr 1fr; gap:34px; align-items:start; }
+  .display { font-size:34px; font-weight:700; letter-spacing:.04em; padding:16px 22px; border:2px solid var(--line); border-radius:18px; min-height:76px; display:flex; align-items:center; background:#fbfcfc; font-variant-numeric:tabular-nums; width:100%; text-align:left; color:var(--ink); }
+  .display .ph { color:#a3b0ae; font-weight:500; letter-spacing:0; font-size:24px; }
+  .keypad { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:14px; }
+  .keypad button { height:76px; border-radius:20px; border:0; background:#f1f5f4; color:var(--ink); font-size:30px; font-weight:700; }
+  .keypad button:active { background:var(--soft); transform:scale(.97); }
+  .keypad button.fn { font-size:18px; color:var(--muted); }
+  .welcome-back { display:inline-flex; gap:10px; align-items:center; background:var(--soft); color:var(--brand); border-radius:999px; padding:10px 18px; font-weight:800; margin-bottom:12px; font-size:17px; }
+  .section-note { font-size:16px; color:var(--muted); margin:-4px 0 14px; }
+  .faces { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
+  .faces .tile { align-items:center; text-align:center; min-height:120px; font-size:15px; color:var(--muted); }
+  .faces .tile .em { font-size:46px; line-height:1; margin-bottom:6px; filter:grayscale(.2); }
+  .faces .tile.sel { color:var(--ink); }
+  .faces .tile.sel .em { filter:none; transform:scale(1.08); }
+  .row3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .row3 .tile { align-items:center; text-align:center; min-height:80px; }
+  .q { margin-bottom:24px; }
+  .q h3 { font-size:21px; margin:0 0 12px; }
+
+  /* ---------- done ---------- */
+  .done { text-align:center; animation:rise .4s ease both; display:flex; flex-direction:column; align-items:center; }
+  .ticketcard { background:#fff; color:var(--ink); border-radius:34px; padding:34px 70px 30px; box-shadow:0 40px 90px -40px rgba(0,0,0,.65); margin:6px 0 24px; position:relative; }
+  .ticketcard small { font-size:15px; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); font-weight:700; }
+  .ticketcard .num { font-size:clamp(110px, 16vw, 170px); font-weight:800; color:var(--brand); line-height:1; letter-spacing:-.04em; }
+  .done h1 { font-size:clamp(32px, 4.4vw, 50px); margin:0; letter-spacing:-.02em; }
+  .done p { font-size:21px; opacity:.88; max-width:640px; line-height:1.45; margin:12px 0 26px; }
+  .tick { width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,.96); color:var(--brand); font-size:62px; display:grid; place-items:center; margin-bottom:24px; box-shadow:0 0 0 14px rgba(255,255,255,.12); }
+  .countdown { font-size:15px; opacity:.75; margin-top:14px; }
+  .whitebtn { background:#fff; color:var(--brand); border:0; border-radius:20px; font-size:22px; font-weight:800; padding:20px 56px; min-height:72px; box-shadow:0 18px 40px -20px rgba(0,0,0,.6); }
+
+  /* ---------- overlay ---------- */
+  .overlay { position:fixed; inset:0; background:rgba(4,18,26,.6); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); display:grid; place-items:center; z-index:50; }
+  .overlay .card { background:#fff; color:var(--ink); border-radius:30px; padding:40px; max-width:540px; width:90%; text-align:center; }
+  .overlay .card h3 { font-size:32px; margin:0 0 10px; }
+  .overlay .card p { font-size:19px; color:var(--muted); margin:0 0 24px; }
+  .ring { width:96px; height:96px; margin:0 auto 18px; border-radius:50%; display:grid; place-items:center; font-size:34px; font-weight:800; color:var(--brand);
+          background:conic-gradient(var(--brand) calc(var(--p) * 1%), #e8eeed 0); position:relative; }
+  .ring::before { content:''; position:absolute; inset:9px; border-radius:50%; background:#fff; }
+  .ring span { position:relative; }
+  .spinner { width:48px; height:48px; border-radius:50%; border:5px solid rgba(255,255,255,.25); border-top-color:#fff; animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .setup { max-width:760px; }
+
+  @media (max-width:900px) {
+    .grid, .grid.five { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .two { grid-template-columns:1fr; gap:10px; }
+    .choices { grid-template-columns:1fr; }
+    .top, .stage { padding-left:18px; padding-right:18px; }
+    .phead, .pbody, .pfoot { padding-left:22px; padding-right:22px; }
+    .clock span { display:none; }
+  }
+  @media (max-height:700px) { .welcome .bigmark { width:84px; height:84px; font-size:34px; margin-bottom:16px; } .welcome .ask { margin:22px 0 16px; } .choice { min-height:130px; } }
+</style>
+</head>
+<body>
+<div class="kiosk" id="kiosk">
+  <div class="top" id="top"></div>
+  <div class="stage" id="app"><div class="spinner"></div></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+  const C = window.NPO_HUB_CONFIG;
+  const sb = supabase.createClient(C.url, C.key, { db: { schema: C.schema }, auth: { persistSession: false, autoRefreshToken: false } });
+  const LS = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  const K_TOKEN = 'npohub.kiosk.token', K_CFG = 'npohub.kiosk.cfg', K_QUEUE = 'npohub.kiosk.queue';
+  const AGE_GROUPS = ['Under 18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
+  const GENDERS = ['Female', 'Male', 'Non-binary', 'Prefer not to say'];
+  const $app = document.getElementById('app'), $top = document.getElementById('top'), $foot = document.getElementById('foot');
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  let token = null, cfg = null, s = null, fb = null, lastTouch = Date.now(), idleOverlay = null, doneTimer = null, logoTaps = [];
+  const fresh = () => ({ step: 'welcome', name: '', mobile: '', returning: false, age: '', gender: '', community: '', communityOther: '',
+                         email: '', guardian: false, consent: false, services: new Set(), unmet: new Set(), unmetOther: '', need: '', error: '', busy: false });
+
+  // ---------- boot ----------
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('k')) LS.set(K_TOKEN, qs.get('k'));
+  const fbToken = qs.get('fb');
+  if (qs.toString()) history.replaceState(null, '', location.pathname); // never leave tokens visible in the address bar
+  token = LS.get(K_TOKEN);
+
+  async function boot() {
+    s = fresh();
+    if (fbToken) return startFeedbackByToken(fbToken, true);
+    if (!token) return renderSetup();
+    await loadConfig();
+    if (cfg) render();
+  }
+
+  async function loadConfig() {
+    try {
+      const { data, error } = await sb.rpc('kiosk_config', { p_token: token });
+      if (error) throw error;
+      cfg = data; LS.set(K_CFG, JSON.stringify(data));
+    } catch (e) {
+      const cached = LS.get(K_CFG);
+      if (cached) cfg = JSON.parse(cached);
+      else if (e && e.message && !isNetwork(e)) { LS.del(K_TOKEN); token = null; return renderSetup(e.message); }
+      else return renderSetup('Could not reach the server. Check the internet connection and try again.');
+    }
+    applyBrand(cfg.hub.colour);
+  }
+
+  function applyBrand(hex) {
+    if (!hex) return;
+    document.documentElement.style.setProperty('--brand', hex);
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', hex);
+  }
+  const isNetwork = e => !navigator.onLine || /fetch|network|Load failed|NetworkError/i.test((e && (e.message || e.details)) || '');
+  const initials = n => (n || 'H').split(/\s+/).filter(w => /^[A-Za-z]/.test(w) && !/^(of|the|and|community|hub)$/i.test(w)).slice(0, 2).map(w => w[0]).join('').toUpperCase() || 'H';
+  const settings = () => (cfg && cfg.settings) || {};
+  const regField = f => { const r = settings().reg_fields; return !r || r[f] !== false; };
+  const fmtMobile = d => d.replace(/\D/g, '').slice(0, 10).replace(/^(\d{3})(\d{0,3})(\d{0,4}).*/, (m, a, b, c) => [a, b, c].filter(Boolean).join(' '));
+
+  // ---------- chrome (top bar + footer) ----------
+  function chrome(opts = {}) {
+    const q = queue().length;
+    const inner = opts.inner;
+    $top.innerHTML = `
+      <div class="mark" id="logo">${esc(initials(cfg ? cfg.hub.name : ''))}</div>
+      <div class="names"><b>${esc(cfg ? cfg.hub.name : 'Community Hub')}</b><span>${esc(cfg ? cfg.org.name : '')}</span></div>
+      <div class="sp"></div>
+      ${q ? `<span class="pill warn">${q} waiting to upload</span>` : ''}
+      ${navigator.onLine ? '' : '<span class="pill warn">Offline</span>'}
+      ${inner ? `<button class="ghostbtn" id="startover">✕&nbsp; Start over</button>` : `<div class="clock" id="clock"></div>`}`;
+    $foot.innerHTML = inner ? '🔒 Your information is protected under POPIA and is never shown to the next visitor.'
+      : `<span>🔒 Protected under POPIA</span><span>·</span><button class="ghostbtn" id="fs" style="padding:7px 14px;font-size:13px">⤢ Full screen</button>`;
+    tickClock();
+    const logo = document.getElementById('logo');
+    logo.addEventListener('click', () => {
+      const now = Date.now(); logoTaps = logoTaps.filter(t => now - t < 2500); logoTaps.push(now);
+      if (logoTaps.length >= 5) { logoTaps = []; renderSetup(); }
+    });
+    bind('startover', 'click', () => (fb && fb.standalone && !token) ? message('Feedback cancelled', 'You can hand the device back to the staff member.') : reset());
+    bind('fs', 'click', () => { const d = document.documentElement; (d.requestFullscreen || d.webkitRequestFullscreen || function () {}).call(d); });
+  }
+  function tickClock() {
+    const el = document.getElementById('clock'); if (!el) return;
+    const n = new Date();
+    el.innerHTML = `<b>${n.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}</b><span>${n.toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}</span>`;
+  }
+  setInterval(tickClock, 15000);
+
+  // a white card screen: title, body, footer buttons
+  function panel({ title, lead, body, back = 'Back', next = 'Next', nextDisabled, steps = true, extraTop = '' }) {
+    chrome({ inner: true });
+    const order = ['consent', 'details', 'about', 'services'];
+    const idx = order.indexOf(s.step);
+    $app.innerHTML = `<div class="panel">
+      <div class="phead">${steps && idx >= 0 ? `<div class="steps">${order.map((x, i) => `<i class="${i <= idx ? 'on' : ''}"></i>`).join('')}</div>` : ''}
+        ${extraTop}<h2>${title}</h2>${lead ? `<p>${lead}</p>` : ''}</div>
+      <div class="pbody" id="pbody">${body}<div class="err" id="err">${esc(s.error)}</div></div>
+      <div class="pfoot">${back ? `<button class="btn ghost" id="back">${esc(back)}</button>` : ''}<button class="btn grow" id="next" ${nextDisabled ? 'disabled' : ''}>${esc(next)}</button></div>
+    </div>`;
+  }
+
+  function render() {
+    clearTimeout(doneTimer);
+    const r = { welcome: rWelcome, consent: rConsent, details: rDetails, about: rAbout, services: rServices, done: rDone,
+                fbFind: rFbFind, fbForm: rFbForm, fbDone: rFbDone }[s.step];
+    r();
+  }
+  const go = step => { s.step = step; s.error = ''; render(); };
+  const bind = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn); };
+  function showErr(m) { s.error = m; const el = document.getElementById('err'); if (el) { el.textContent = m; el.scrollIntoView && el.scrollIntoView({ block: 'nearest' }); } }
+
+  // ---------- on-screen number pad ----------
+  function keypadHtml() {
+    return `<div class="keypad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button data-key="${n}">${n}</button>`).join('')}
+      <button class="fn" data-key="clear">Clear</button><button data-key="0">0</button><button class="fn" data-key="del">⌫</button></div>`;
+  }
+  function bindKeypad(get, set, max, after) {
+    document.querySelectorAll('[data-key]').forEach(b => b.addEventListener('click', () => {
+      let v = get(); const k = b.dataset.key;
+      if (k === 'del') v = v.slice(0, -1); else if (k === 'clear') v = ''; else if (v.length < max) v += k;
+      set(v); after();
+    }));
+  }
+
+  // ---------- screens ----------
+  function rWelcome() {
+    chrome();
+    $app.innerHTML = `
+      <div class="welcome">
+        <div class="bigmark">${esc(initials(cfg.hub.name))}</div>
+        <h1>Welcome to ${esc(cfg.hub.name)}</h1>
+        ${cfg.hub.welcome ? `<p class="msg">${esc(cfg.hub.welcome)}</p>` : ''}
+        <div class="ask">What would you like to do today?</div>
+        <div class="choices">
+          <button class="choice primary" id="start"><div class="ic">👋</div><div><b>Sign in</b><span>I'm here for a service or help today</span></div><div class="arrow">›</div></button>
+          <button class="choice" id="givefb"><div class="ic">⭐</div><div><b>Give feedback</b><span>Tell us how we did on your visit</span></div><div class="arrow">›</div></button>
+        </div>
+        <div class="tapnote"><i></i>Tap a button to begin — it takes about a minute</div>
+      </div>`;
+    bind('start', 'click', () => go('consent'));
+    bind('givefb', 'click', () => { fb = { ticket: '', last4: '', field: 'ticket' }; go('fbFind'); });
+  }
+
+  function rConsent() {
+    panel({ title: 'Before we start', lead: 'Please read how we look after your information.', next: 'I agree — continue', nextDisabled: !s.consent, back: 'Cancel',
+      body: `<div class="notice">${esc(settings().privacy_notice || 'We collect your details to assist you and to report on our services. Your information is kept secure and only seen by authorised staff.')}</div>
+        <button class="check ${s.consent ? 'on' : ''}" id="ck"><div class="box">✓</div><div>I have read this notice and agree to my information being collected and used as described.</div></button>` });
+    bind('ck', 'click', () => { s.consent = !s.consent; rConsent(); });
+    bind('back', 'click', reset);
+    bind('next', 'click', () => go('details'));
+  }
+
+  function rDetails() {
+    const digits = s.mobile.replace(/\D/g, '');
+    panel({ title: 'Your details', lead: 'We use your mobile number to recognise you when you visit again.', next: s.busy ? 'Checking…' : 'Next', nextDisabled: s.busy,
+      body: `<div class="two">
+        <div><label class="f" for="nm" style="margin-top:4px">Name and surname</label>
+          <input class="t" id="nm" autocomplete="off" autocapitalize="words" spellcheck="false" value="${esc(s.name)}" placeholder="e.g. Thandi Mokoena">
+          <label class="f">Mobile number</label>
+          <div class="display ${document.activeElement && document.activeElement.id === 'nm' ? '' : 'on'}" id="mbd">${digits ? esc(fmtMobile(digits)) : '<span class="ph">082 123 4567</span>'}</div></div>
+        <div>${keypadHtml()}</div></div>` });
+    bind('nm', 'input', e => s.name = e.target.value);
+    bind('nm', 'keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+    bindKeypad(() => s.mobile.replace(/\D/g, ''), v => s.mobile = v, 10, () => { const d = document.getElementById('mbd'); const v = s.mobile; d.innerHTML = v ? esc(fmtMobile(v)) : '<span class="ph">082 123 4567</span>'; d.classList.add('on'); });
+    document.addEventListener('keydown', physicalDigits);
+    bind('back', 'click', () => { document.removeEventListener('keydown', physicalDigits); go('consent'); });
+    bind('next', 'click', async () => {
+      const d = s.mobile.replace(/\D/g, '').replace(/^27(?=\d{9}$)/, '0');
+      if (s.name.trim().length < 2) return showErr('Please enter your name.');
+      if (!/^0\d{9}$/.test(d)) return showErr('Please enter your 10-digit mobile number, e.g. 082 123 4567.');
+      document.removeEventListener('keydown', physicalDigits);
+      s.busy = true; rDetails();
+      try {
+        const { data, error } = await sb.rpc('kiosk_check_mobile', { p_token: token, p_mobile: d });
+        if (error) throw error;
+        s.returning = !!(data && data.returning);
+      } catch (e) { s.returning = false; }
+      s.busy = false;
+      go(s.returning ? 'services' : 'about');
+    });
+    if (!s.name) setTimeout(() => { const el = document.getElementById('nm'); if (el) el.focus(); }, 60);
+  }
+  // allow a physical keyboard to type the mobile number when the name box is not focused
+  function physicalDigits(e) {
+    if (s.step !== 'details' || (document.activeElement && document.activeElement.id === 'nm')) return;
+    const b = /^\d$/.test(e.key) ? document.querySelector(`[data-key="${e.key}"]`) : e.key === 'Backspace' ? document.querySelector('[data-key="del"]') : null;
+    if (b) { e.preventDefault(); b.click(); }
+  }
+
+  function rAbout() {
+    const comms = (cfg.communities || []);
+    const minor = s.age === 'Under 18';
+    panel({ title: 'A little about you', lead: 'This helps us understand who we are reaching. Tap to choose.',
+      body: `
+      ${regField('age_group') ? `<label class="f" style="margin-top:4px">Age group</label>
+      <div class="grid">${AGE_GROUPS.map(a => `<button class="tile center ${s.age === a ? 'sel' : ''}" data-v="${esc(a)}" data-g="age">${esc(a)}</button>`).join('')}</div>` : ''}
+      ${minor ? `<button class="check ${s.guardian ? 'on' : ''}" id="gd"><div class="box">✓</div><div>My parent or guardian is with me and agrees to my information being collected.</div></button>` : ''}
+      ${regField('gender') ? `<label class="f">Gender <small>(optional)</small></label>
+      <div class="grid">${GENDERS.map(a => `<button class="tile center ${s.gender === a ? 'sel' : ''}" data-v="${esc(a)}" data-g="gender">${esc(a)}</button>`).join('')}</div>` : ''}
+      ${regField('community') ? `<label class="f">Where do you live?</label>
+      <div class="grid">${comms.map(a => `<button class="tile center ${s.community === a ? 'sel' : ''}" data-v="${esc(a)}" data-g="community">${esc(a)}</button>`).join('')}
+        <button class="tile center ${s.community === '__other' ? 'sel' : ''}" data-v="__other" data-g="community">Somewhere else</button></div>
+      ${s.community === '__other' ? `<input class="t" id="co" style="margin-top:12px" autocomplete="off" placeholder="Type your area or community" value="${esc(s.communityOther)}">` : ''}` : ''}
+      ${regField('email') && !minor ? `<label class="f" for="em">Email address <small>(optional)</small></label>
+      <input class="t" id="em" type="email" inputmode="email" autocomplete="off" value="${esc(s.email)}" placeholder="name@example.com">` : ''}` });
+    const keepScroll = fn => { const b = document.getElementById('pbody'); const y = b ? b.scrollTop : 0; fn(); const b2 = document.getElementById('pbody'); if (b2) b2.scrollTop = y; };
+    document.querySelectorAll('[data-g]').forEach(el => el.addEventListener('click', () => {
+      const g = el.dataset.g, v = el.dataset.v;
+      s[g] = s[g] === v && g !== 'age' ? '' : v;
+      if (g === 'age' && v !== 'Under 18') s.guardian = false;
+      keepScroll(rAbout);
+      if (g === 'community' && v === '__other') { const c = document.getElementById('co'); if (c) c.focus(); }
+    }));
+    bind('gd', 'click', () => { s.guardian = !s.guardian; keepScroll(rAbout); });
+    bind('co', 'input', e => s.communityOther = e.target.value);
+    bind('em', 'input', e => s.email = e.target.value);
+    bind('back', 'click', () => go('details'));
+    bind('next', 'click', () => {
+      if (regField('age_group') && !s.age) return showErr('Please choose your age group.');
+      if (minor && !s.guardian) return showErr('Visitors under 18 need a parent or guardian to agree. Please ask a staff member for help.');
+      if (s.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.email.trim())) return showErr('That email address does not look right — please check it or leave it blank.');
+      go('services');
+    });
+  }
+
+  function rServices() {
+    const cats = cfg.categories || [];
+    const avail = cats.filter(c => c.available), notAvail = cats.filter(c => !c.available);
+    const first = s.name.trim().split(/\s+/)[0];
+    panel({ title: 'How can we help you today?', lead: 'Choose one or more services.', next: s.busy ? 'Sending…' : 'Submit', nextDisabled: s.busy,
+      extraTop: s.returning ? `<div class="welcome-back">👋 Welcome back, ${esc(first)}!</div>` : '',
+      body: `
+      <div class="grid">${avail.map(c => `<button class="tile svc ${s.services.has(c.id) ? 'sel' : ''}" data-v="${c.id}" data-k="svc">
+          <span class="ico">${esc(c.icon || '•')}</span>${esc(c.name)}<span class="ex">${esc(c.examples || '')}</span></button>`).join('')}</div>
+      ${notAvail.length ? `<label class="f">Need something we don't offer here yet?</label>
+      <div class="section-note">Tap it anyway — it helps us show funders what our community needs.</div>
+      <div class="grid">${notAvail.map(c => `<button class="tile svc dashed ${s.unmet.has(c.id) ? 'sel' : ''}" data-v="${c.id}" data-k="unmet">
+          <span class="ico">${esc(c.icon || '•')}</span>${esc(c.name)}<span class="ex">Not available at this Hub</span></button>`).join('')}</div>` : ''}
+      <label class="f" for="nd">Please tell us briefly what assistance you need <small>(optional)</small></label>
+      <textarea class="t" id="nd" autocomplete="off" placeholder="e.g. I need help writing a CV for a retail job">${esc(s.need)}</textarea>` });
+    document.querySelectorAll('[data-k]').forEach(el => el.addEventListener('click', () => {
+      const set = el.dataset.k === 'svc' ? s.services : s.unmet;
+      set.has(el.dataset.v) ? set.delete(el.dataset.v) : set.add(el.dataset.v);
+      el.classList.toggle('sel');
+    }));
+    bind('nd', 'input', e => s.need = e.target.value);
+    bind('back', 'click', () => go(s.returning ? 'details' : 'about'));
+    bind('next', 'click', submit);
+  }
+
+  function payload() {
+    return {
+      full_name: s.name.trim(), mobile: s.mobile, consent: s.consent,
+      age_group: s.returning ? '' : s.age, gender: s.returning ? '' : s.gender,
+      community: s.returning ? '' : (s.community === '__other' ? s.communityOther.trim() : s.community),
+      email: s.returning || s.age === 'Under 18' ? '' : s.email.trim(),
+      guardian_consent: s.guardian,
+      services: [...s.services], unmet: [...s.unmet], need_description: s.need.trim(),
+      client_ref: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
+      captured_at: new Date().toISOString()
+    };
+  }
+
+  async function submit() {
+    if (!s.services.size && !s.unmet.size) return showErr('Please choose at least one service.');
+    s.busy = true; const btn = document.getElementById('next'); if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    const p = payload();
+    try {
+      const { data, error } = await sb.rpc('kiosk_register', { p_token: token, p });
+      if (error) throw error;
+      s.ticket = data.ticket; s.offline = false; s.busy = false;
+      go('done');
+    } catch (e) {
+      s.busy = false;
+      if (isNetwork(e)) { enqueue(p); s.ticket = null; s.offline = true; go('done'); }
+      else { rServices(); showErr((e && e.message) || 'Something went wrong. Please ask a staff member for help.'); }
+    }
+  }
+
+  function countdown(sec, fn) {
+    let left = sec;
+    const tick = () => { const el = document.getElementById('cd'); if (el) el.textContent = left; if (left-- <= 0) fn(); else doneTimer = setTimeout(tick, 1000); };
+    tick();
+  }
+
+  function rDone() {
+    const first = s.name.trim().split(/\s+/)[0];
+    chrome();
+    $app.innerHTML = `<div class="done">
+        ${s.ticket ? `<div class="ticketcard"><small>Your ticket number</small><div class="num">${esc(s.ticket)}</div></div>` : '<div class="tick">✓</div>'}
+        <h1>Thank you, ${esc(first)}!</h1>
+        <p>${s.ticket ? 'Please take a seat. A staff member will call your ticket number shortly.' : 'You are signed in. We are offline at the moment, so please tell the staff member at the desk your name.'}</p>
+        <button class="whitebtn" id="fin">Done</button>
+        <div class="countdown">Returning to the start screen in <b id="cd">15</b> seconds</div></div>`;
+    bind('fin', 'click', reset);
+    countdown(15, reset);
+  }
+
+  // ---------- feedback ----------
+  function rFbFind() {
+    const fieldBox = (k, label, ph) => `<label class="f">${label}</label><button class="display ${fb.field === k ? 'on' : ''}" data-field="${k}">${fb[k] ? esc(fb[k]) : `<span class="ph">${ph}</span>`}</button>`;
+    panel({ title: 'Give feedback', lead: 'Enter the ticket number you received and the last 4 digits of your mobile number.', back: 'Cancel', next: s.busy ? 'Looking…' : 'Continue', nextDisabled: s.busy, steps: false,
+      body: `<div class="two"><div>${fieldBox('ticket', 'Ticket number', 'e.g. 12')}${fieldBox('last4', 'Last 4 digits of your mobile', 'e.g. 4567')}</div><div>${keypadHtml()}</div></div>` });
+    document.querySelectorAll('[data-field]').forEach(b => b.addEventListener('click', () => { fb.field = b.dataset.field; rFbFind(); }));
+    bindKeypad(() => fb[fb.field], v => fb[fb.field] = v, fb.field === 'ticket' ? 4 : 4, () => {
+      if (fb.field === 'ticket' && fb.ticket.length >= 3) fb.field = 'last4';
+      rFbFind();
+    });
+    bind('back', 'click', reset);
+    bind('next', 'click', async () => {
+      if (!fb.ticket || fb.last4.length !== 4) return showErr('Please enter your ticket number and 4 digits.');
+      s.busy = true; rFbFind();
+      try {
+        const { data, error } = await sb.rpc('kiosk_feedback_find', { p_token: token, p_ticket: parseInt(fb.ticket, 10), p_last4: fb.last4 });
+        if (error) throw error;
+        s.busy = false;
+        if (!data.found) { rFbFind(); return showErr('We could not find that visit, or feedback was already given. Please ask a staff member.'); }
+        await startFeedbackByToken(data.feedback_token, false);
+      } catch (e) { s.busy = false; rFbFind(); showErr(isNetwork(e) ? 'No internet connection right now. Please try again later.' : e.message); }
+    });
+  }
+
+  async function startFeedbackByToken(t, standalone) {
+    try {
+      const { data, error } = await sb.rpc('kiosk_feedback_info', { p_fb: t });
+      if (error) throw error;
+      if (!data.found) { return message('Feedback link not found', 'This feedback link is not valid. Please ask a staff member.'); }
+      if (!cfg) { cfg = { hub: data.hub, org: data.org, settings: data.settings, categories: [], communities: [] }; applyBrand(data.hub.colour); }
+      if (data.already) { return message('Thank you!', 'Feedback for this visit has already been received.'); }
+      fb = { token: t, standalone, services: data.services || [], a: {} };
+      go('fbForm');
+    } catch (e) { message('Something went wrong', isNetwork(e) ? 'No internet connection right now.' : e.message); }
+  }
+
+  function rFbForm() {
+    const q = (settings().feedback) || {};
+    const on = k => q[k] !== false;
+    const a = fb.a;
+    const opt = (k, vals) => `<div class="row3">${vals.map(([v, l]) => `<button class="tile ${a[k] === v ? 'sel' : ''}" data-q="${k}" data-v="${v}">${l}</button>`).join('')}</div>`;
+    const faces = ['😞', '🙁', '😐', '🙂', '😄'], words = ['Poor', 'Fair', 'Good', 'Very good', 'Excellent'];
+    let n = 0; const num = () => ++n + '. ';
+    panel({ title: 'How did we do?', lead: (fb.services.length ? 'You were helped with: <b>' + esc(fb.services.join(', ')) + '</b>. ' : '') + 'This takes less than a minute.',
+      back: 'Cancel', next: s.busy ? 'Sending…' : 'Send feedback', nextDisabled: s.busy, steps: false,
+      body: `
+      ${on('rating') ? `<div class="q"><h3>${num()}How would you rate the service you received?</h3>
+        <div class="faces">${[1, 2, 3, 4, 5].map(i => `<button class="tile ${a.rating === i ? 'sel' : ''}" data-q="rating" data-v="${i}"><span class="em">${faces[i - 1]}</span>${i} · ${words[i - 1]}</button>`).join('')}</div></div>` : ''}
+      ${on('assisted') ? `<div class="q"><h3>${num()}Were you assisted with the service you requested?</h3>${opt('assisted', [['yes', 'Yes, fully'], ['partial', 'Partially'], ['no', 'No']])}</div>` : ''}
+      ${on('staff_helpful') ? `<div class="q"><h3>${num()}Was the staff member helpful and professional?</h3>${opt('staff_helpful', [['yes', 'Yes'], ['partial', 'Partially'], ['no', 'No']])}</div>` : ''}
+      ${on('visit_again') ? `<div class="q"><h3>${num()}Would you visit the Hub again?</h3>${opt('visit_again', [['yes', 'Yes'], ['maybe', 'Maybe'], ['no', 'No']])}</div>` : ''}
+      ${on('improve') ? `<div class="q"><h3>${num()}What could we improve? <small style="color:var(--muted);font-weight:500">(optional)</small></h3>
+        <textarea class="t" id="im" autocomplete="off">${esc(a.improve || '')}</textarea></div>` : ''}
+      ${on('additional_needs') ? `<div class="q"><h3>${num()}Do you have any other needs the Hub could help you with? <small style="color:var(--muted);font-weight:500">(optional)</small></h3>
+        <textarea class="t" id="an" autocomplete="off">${esc(a.additional_needs || '')}</textarea></div>` : ''}` });
+    document.querySelectorAll('[data-q]').forEach(el => el.addEventListener('click', () => {
+      const k = el.dataset.q; a[k] = k === 'rating' ? parseInt(el.dataset.v, 10) : el.dataset.v;
+      el.parentElement.querySelectorAll('.tile').forEach(t => t.classList.toggle('sel', t === el));
+    }));
+    bind('im', 'input', e => a.improve = e.target.value);
+    bind('an', 'input', e => a.additional_needs = e.target.value);
+    bind('back', 'click', () => fb.standalone && !token ? message('Feedback cancelled', 'You can hand the device back to the staff member.') : reset());
+    bind('next', 'click', async () => {
+      if (on('rating') && !a.rating) return showErr('Please choose a rating from 1 to 5.');
+      s.busy = true; const btn = document.getElementById('next'); if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+      try {
+        const { error } = await sb.rpc('kiosk_submit_feedback', { p_fb: fb.token, p: a });
+        if (error) throw error;
+        s.busy = false; go('fbDone');
+      } catch (e) { s.busy = false; rFbForm(); showErr(isNetwork(e) ? 'No internet connection. Please try again.' : e.message); }
+    });
+  }
+
+  function rFbDone() {
+    const handBack = fb.standalone && !token;
+    chrome();
+    $app.innerHTML = `<div class="done"><div class="tick">♥</div><h1>Thank you for your feedback!</h1>
+      <p>${handBack ? 'Please hand the device back to the staff member.' : 'It helps us improve our services for the whole community.'}</p>
+      ${handBack ? '' : '<button class="whitebtn" id="fin">Done</button><div class="countdown">Returning to the start screen in <b id="cd">10</b> seconds</div>'}</div>`;
+    bind('fin', 'click', reset);
+    if (!handBack) countdown(10, reset);
+  }
+
+  function message(title, text) {
+    s.step = 'msg';
+    chrome();
+    $app.innerHTML = `<div class="done"><h1>${esc(title)}</h1><p>${esc(text)}</p>${token ? '<button class="whitebtn" id="fin">Back to start</button>' : ''}</div>`;
+    bind('fin', 'click', reset);
+  }
+
+  // ---------- setup (staff only) ----------
+  function renderSetup(err) {
+    s = s || fresh(); s.step = 'setup';
+    $top.innerHTML = '<div class="mark">⚙</div><div class="names"><b>Kiosk set-up</b><span>Staff only</span></div>';
+    $foot.innerHTML = `${queue().length} registration(s) stored offline on this device.`;
+    $app.innerHTML = `<div class="panel setup"><div class="phead"><h2>Connect this tablet to a Hub</h2>
+        <p>Paste the kiosk link or code for this Hub. Hub Managers can copy it from <b>Administration → Hubs & kiosks</b> in the staff app.</p></div>
+      <div class="pbody"><label class="f" for="code">Kiosk link or code</label>
+        <input class="t" id="code" autocomplete="off" placeholder="https://…/kiosk.html?k=…" style="font-size:20px">
+        <div class="err">${esc(err || '')}</div></div>
+      <div class="pfoot">${token ? '<button class="btn ghost" id="cancel">Cancel</button><button class="btn ghost" id="forget">Remove from device</button>' : ''}<button class="btn grow" id="save">Save</button></div></div>`;
+    bind('cancel', 'click', reset);
+    bind('forget', 'click', () => { LS.del(K_TOKEN); LS.del(K_CFG); token = null; cfg = null; renderSetup(); });
+    bind('save', 'click', async () => {
+      const v = document.getElementById('code').value.trim();
+      const m = v.match(/[?&]k=([0-9a-f-]{36})/i) || v.match(/^([0-9a-f-]{36})$/i);
+      if (!m) return renderSetup('That does not look like a kiosk link. It should contain "?k=" followed by a long code.');
+      token = m[1]; LS.set(K_TOKEN, token); cfg = null;
+      await loadConfig(); if (cfg) reset();
+    });
+  }
+
+  // ---------- reset / idle ----------
+  function reset() {
+    clearTimeout(doneTimer);
+    document.removeEventListener('keydown', physicalDigits);
+    if (idleOverlay) { idleOverlay.remove(); idleOverlay = null; }
+    s = fresh(); fb = null;
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    if (!token) return renderSetup();
+    if (!cfg) return boot();
+    render();
+  }
+
+  ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { lastTouch = Date.now(); }, { passive: true }));
+  document.addEventListener('contextmenu', e => { if (!/INPUT|TEXTAREA/.test(e.target.tagName)) e.preventDefault(); });
+  setInterval(() => {
+    if (!s || ['welcome', 'setup', 'msg', 'done', 'fbDone'].includes(s.step) || idleOverlay) return;
+    const limit = (parseInt(settings().kiosk_idle_seconds, 10) || 90) * 1000;
+    if (Date.now() - lastTouch < limit) return;
+    const total = 15; let left = total;
+    idleOverlay = document.createElement('div');
+    idleOverlay.className = 'overlay';
+    idleOverlay.innerHTML = `<div class="card"><div class="ring" id="ring" style="--p:100"><span id="cd2">${left}</span></div><h3>Are you still there?</h3><p>For your privacy this screen will clear soon.</p><button class="btn" id="stay" style="width:100%">I'm still here</button></div>`;
+    document.body.appendChild(idleOverlay);
+    const tick = setInterval(() => {
+      left--; const cd = document.getElementById('cd2'), r = document.getElementById('ring');
+      if (cd) cd.textContent = Math.max(left, 0); if (r) r.style.setProperty('--p', Math.max(0, 100 * left / total));
+      if (left <= 0) { clearInterval(tick); reset(); }
+    }, 1000);
+    document.getElementById('stay').addEventListener('click', () => { clearInterval(tick); idleOverlay.remove(); idleOverlay = null; lastTouch = Date.now(); });
+  }, 1000);
+
+  // ---------- offline queue ----------
+  function queue() { try { return JSON.parse(LS.get(K_QUEUE) || '[]'); } catch (e) { return []; } }
+  function enqueue(p) { const q = queue(); q.push({ p, tries: 0 }); LS.set(K_QUEUE, JSON.stringify(q)); }
+  let syncing = false;
+  async function sync() {
+    if (syncing || !token || !navigator.onLine) return;
+    const q = queue(); if (!q.length) return;
+    syncing = true;
+    const keep = [];
+    for (const item of q) {
+      try {
+        const { error } = await sb.rpc('kiosk_register', { p_token: token, p: Object.assign({}, item.p, { offline: true }) });
+        if (error) throw error;
+      } catch (e) {
+        item.tries++;
+        if (isNetwork(e) || item.tries < 5) keep.push(item);
+      }
+    }
+    LS.set(K_QUEUE, JSON.stringify(keep));
+    syncing = false;
+    if (s && s.step === 'welcome') render();
+  }
+  window.addEventListener('online', () => { sync(); if (s && s.step === 'welcome') render(); });
+  window.addEventListener('offline', () => { if (s && s.step === 'welcome') render(); });
+  setInterval(sync, 30000);
+  setInterval(() => { if (s && s.step === 'welcome' && token && navigator.onLine) loadConfig().then(() => s.step === 'welcome' && render()); }, 10 * 60 * 1000);
+
+  boot().then(sync);
+})();
+</script>
+</body>
+</html>

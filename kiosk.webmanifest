@@ -1,0 +1,13 @@
+{
+  "name": "Community Hub Visitor Sign-in",
+  "short_name": "Hub Sign-in",
+  "start_url": "kiosk.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0b3b37",
+  "theme_color": "#0f766e",
+  "icons": [
+    { "src": "kiosk-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

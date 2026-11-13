@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>NPO Community Hub — Staff & Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand:#0f766e; --brand-2:#115e59; --brand-soft:#e6f4f2; --side:#0d2624; --ink:#14201f; --muted:#5b6b69; --faint:#8a9896;
+    --line:#e3e9e8; --bg:#f5f7f6; --card:#ffffff; --danger:#b42318; --warn:#b54708; --ok:#067647;
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --grid:#eef1f0;
+    --st-awaiting:#fab219; --st-progress:#2a78d6; --st-completed:#0ca30c; --st-referred:#6250d6; --st-follow:#ec835a; --st-unable:#d03b3b;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); color:var(--ink); font-family:Figtree,system-ui,-apple-system,Segoe UI,Roboto,sans-serif; font-size:15px; }
+  a { color:var(--brand); }
+  button { font:inherit; }
+  .hidden { display:none !important; }
+
+  /* auth */
+  .auth { min-height:100vh; display:grid; grid-template-columns:1.1fr 1fr; }
+  .auth .art { background:linear-gradient(160deg,#0d2624,#0f766e 70%,#14b8a6); color:#fff; padding:56px; display:flex; flex-direction:column; justify-content:space-between; }
+  .auth .art h1 { font-size:40px; line-height:1.1; margin:0 0 16px; letter-spacing:-.02em; max-width:520px; }
+  .auth .art p { font-size:17px; opacity:.85; max-width:480px; line-height:1.55; }
+  .auth .art ul { list-style:none; padding:0; margin:28px 0 0; display:grid; gap:10px; font-size:15px; opacity:.92; }
+  .auth .art li::before { content:'✓  '; font-weight:800; }
+  .auth .form { display:flex; align-items:center; justify-content:center; padding:40px; }
+  .auth .box { width:100%; max-width:380px; }
+  .auth h2 { margin:0 0 6px; font-size:26px; }
+  .muted { color:var(--muted); }
+  .faint { color:var(--faint); }
+  @media (max-width:860px){ .auth{grid-template-columns:1fr} .auth .art{display:none} }
+
+  /* layout */
+  .shell { display:grid; grid-template-columns:232px 1fr; min-height:100vh; }
+  aside.side { background:var(--side); color:#cfe0de; padding:18px 12px; display:flex; flex-direction:column; gap:4px; position:sticky; top:0; height:100vh; }
+  .brandrow { display:flex; gap:10px; align-items:center; padding:6px 10px 18px; }
+  .brandrow .lg { width:36px; height:36px; border-radius:10px; background:#14b8a6; color:#04201d; display:grid; place-items:center; font-weight:800; }
+  .brandrow b { color:#fff; display:block; font-size:15px; }
+  .brandrow span { font-size:12px; opacity:.7; }
+  .nav { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; color:#cfe0de; cursor:pointer; border:0; background:none; text-align:left; font-weight:600; width:100%; }
+  .nav:hover { background:rgba(255,255,255,.06); }
+  .nav.on { background:rgba(20,184,166,.18); color:#fff; }
+  .nav .ic { width:20px; text-align:center; }
+  .nav .ct { margin-left:auto; background:#fab219; color:#3b2a00; font-size:12px; border-radius:999px; padding:1px 8px; font-weight:700; }
+  .side .foot { margin-top:auto; font-size:12px; padding:10px; opacity:.75; line-height:1.5; }
+  .side .foot button { background:none; border:1px solid rgba(255,255,255,.2); color:#fff; border-radius:8px; padding:6px 10px; cursor:pointer; margin-top:8px; }
+  .content { min-width:0; }
+  .topbar { display:flex; align-items:center; gap:14px; padding:16px 28px; border-bottom:1px solid var(--line); background:#fff; position:sticky; top:0; z-index:5; }
+  .topbar h1 { margin:0; font-size:20px; }
+  .topbar .sp { flex:1; }
+  .page { padding:24px 28px 60px; max-width:1400px; }
+  @media (max-width:900px){ .shell{grid-template-columns:1fr} aside.side{position:static;height:auto;flex-direction:row;flex-wrap:wrap} .side .foot,.brandrow span{display:none} .page{padding:16px} }
+
+  /* components */
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  .card h3 { margin:0 0 4px; font-size:15px; }
+  .card .sub { font-size:12.5px; color:var(--muted); margin-bottom:12px; }
+  .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .grid { display:grid; gap:16px; }
+  .g2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .g3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .kpis { display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); margin-bottom:16px; }
+  .kpi { background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+  .kpi .l { font-size:12.5px; color:var(--muted); font-weight:600; }
+  .kpi .v { font-size:28px; font-weight:800; letter-spacing:-.02em; margin-top:4px; font-variant-numeric:tabular-nums; }
+  .kpi .h { font-size:12px; color:var(--faint); margin-top:2px; }
+  @media (max-width:1100px){ .g2,.g3{grid-template-columns:1fr} }
+  .btn { border:0; border-radius:10px; padding:9px 14px; background:var(--brand); color:#fff; font-weight:700; cursor:pointer; white-space:nowrap; }
+  .btn:hover { background:var(--brand-2); }
+  .btn.sec { background:#fff; color:var(--ink); border:1px solid var(--line); }
+  .btn.sec:hover { background:#f0f4f3; }
+  .btn.danger { background:#fff; color:var(--danger); border:1px solid #f3c7c3; }
+  .btn.sm { padding:6px 10px; font-size:13px; }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  input.i, select.i, textarea.i { font:inherit; border:1px solid var(--line); border-radius:10px; padding:9px 11px; background:#fff; color:var(--ink); min-width:0; }
+  input.i:focus, select.i:focus, textarea.i:focus { outline:2px solid var(--brand-soft); border-color:var(--brand); }
+  textarea.i { width:100%; min-height:72px; resize:vertical; }
+  label.lb { display:block; font-size:12.5px; font-weight:700; color:var(--muted); margin:12px 0 5px; }
+  .fld input.i, .fld select.i, .fld textarea.i { width:100%; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .tab { border:1px solid var(--line); background:#fff; padding:8px 14px; border-radius:999px; cursor:pointer; font-weight:600; color:var(--muted); }
+  .tab.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .tab .n { margin-left:6px; font-size:12px; opacity:.8; }
+  table.t { width:100%; border-collapse:collapse; font-size:14px; }
+  table.t th { text-align:left; font-size:12px; color:var(--muted); font-weight:700; padding:9px 10px; border-bottom:1px solid var(--line); background:#fafcfb; position:sticky; top:0; }
+  table.t td { padding:9px 10px; border-bottom:1px solid var(--grid); vertical-align:top; }
+  table.t tr.click { cursor:pointer; }
+  table.t tr.click:hover td { background:#f7faf9; }
+  table.t td.n, table.t th.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .chip { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; padding:3px 9px; border-radius:999px; background:#f0f3f2; color:var(--ink); margin:2px 4px 2px 0; }
+  .chip .dot { width:8px; height:8px; border-radius:50%; flex:none; }
+  .badge { font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:6px; background:var(--brand-soft); color:var(--brand); }
+  .badge.new { background:#e8f1fd; color:#1c5cab; }
+  .badge.minor { background:#fdf0e8; color:#9a3e12; }
+  .badge.grey { background:#f0f3f2; color:var(--muted); }
+  .qgrid { display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); }
+  .qcard { background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 16px; cursor:pointer; display:flex; gap:14px; transition:border-color .15s, box-shadow .15s; }
+  .qcard:hover { border-color:#bcd3d0; box-shadow:0 6px 18px -12px rgba(0,0,0,.25); }
+  .qcard .tk { width:54px; height:54px; border-radius:12px; background:var(--brand-soft); color:var(--brand); font-weight:800; font-size:20px; display:grid; place-items:center; flex:none; }
+  .qcard .nm { font-weight:700; font-size:15.5px; }
+  .qcard .meta { font-size:12.5px; color:var(--muted); margin:2px 0 6px; }
+  .empty { text-align:center; padding:48px 20px; color:var(--muted); background:#fff; border:1px dashed var(--line); border-radius:14px; }
+  .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:center; background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px; margin-bottom:16px; }
+  .filters select.i, .filters input.i { padding:7px 9px; font-size:13.5px; }
+  .filters .lbl { font-size:12px; color:var(--muted); font-weight:700; }
+  .chartbox { position:relative; height:260px; }
+  .chartbox.tall { height:320px; }
+  .note { font-size:12.5px; color:var(--muted); background:#fafcfb; border:1px solid var(--line); border-radius:10px; padding:10px 12px; line-height:1.5; }
+  .note.warn { background:#fff8eb; border-color:#f7dfae; color:#7a4a00; }
+
+  /* drawer + modal */
+  .scrim { position:fixed; inset:0; background:rgba(13,38,36,.42); z-index:40; }
+  .drawer { position:fixed; top:0; right:0; bottom:0; width:min(720px,100%); background:var(--bg); z-index:41; overflow:auto; box-shadow:-20px 0 60px -30px rgba(0,0,0,.4); }
+  .drawer header { background:#fff; border-bottom:1px solid var(--line); padding:18px 22px; position:sticky; top:0; z-index:2; display:flex; gap:14px; align-items:flex-start; }
+  .drawer .body { padding:18px 22px 60px; display:grid; gap:14px; }
+  .x { margin-left:auto; border:0; background:#f0f3f2; width:34px; height:34px; border-radius:10px; cursor:pointer; font-size:18px; flex:none; }
+  .modal { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:20px; }
+  .modal .mc { background:#fff; border-radius:16px; width:min(640px,100%); max-height:90vh; overflow:auto; box-shadow:0 30px 80px -30px rgba(0,0,0,.5); }
+  .modal .mh { padding:16px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; position:sticky; top:0; background:#fff; z-index:1; }
+  .modal .mh h3 { margin:0; font-size:17px; }
+  .modal .mb { padding:6px 20px 18px; }
+  .modal .mf { padding:14px 20px; border-top:1px solid var(--line); display:flex; gap:10px; justify-content:flex-end; position:sticky; bottom:0; background:#fff; }
+  .svc { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .svc .hd { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .svc .two { display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
+  .timeline { display:grid; gap:10px; }
+  .tl { display:grid; grid-template-columns:96px 1fr; gap:10px; font-size:13.5px; }
+  .tl .d { color:var(--muted); font-weight:600; }
+  .toastwrap { position:fixed; bottom:20px; right:20px; z-index:80; display:grid; gap:8px; }
+  .toast { background:var(--ink); color:#fff; padding:12px 16px; border-radius:12px; font-weight:600; box-shadow:0 10px 30px -10px rgba(0,0,0,.5); max-width:360px; }
+  .toast.err { background:var(--danger); }
+  .checks { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:6px; }
+  .checks label { display:flex; gap:8px; align-items:center; font-size:14px; padding:6px 8px; border:1px solid var(--line); border-radius:8px; cursor:pointer; }
+  .spin { width:28px; height:28px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--brand); animation:sp 1s linear infinite; margin:40px auto; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  .report { background:#fff; border:1px solid var(--line); border-radius:14px; padding:24px; }
+  .report h2 { margin:0; font-size:22px; }
+  .report .period { color:var(--muted); margin:4px 0 16px; }
+  .report .summary p { line-height:1.6; margin:0 0 8px; }
+  .report h4 { margin:22px 0 8px; font-size:14px; }
+  .legend { display:flex; gap:14px; font-size:12.5px; color:var(--muted); margin-bottom:8px; }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
+</style>
+</head>
+<body>
+<div id="root"><div class="spin"></div></div>
+<div class="toastwrap" id="toasts"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="config.js"></script>
+<script>
+'use strict';
+/* =====================================================================
+   NPO Community Hub — staff, management & donor app
+   ===================================================================== */
+const CFG = window.NPO_HUB_CONFIG;
+const sb = supabase.createClient(CFG.url, CFG.key, { db: { schema: CFG.schema }, auth: { storageKey: 'npohub-staff-auth', persistSession: true } });
+
+const ROLE_LABEL = { super_admin: 'Super Administrator', management: 'Management', hub_manager: 'Hub Manager', hub_staff: 'Hub Staff', programme_manager: 'Programme Manager', donor_viewer: 'Donor Viewer' };
+const STATUS = {
+  awaiting:    { label: 'Awaiting Assistance', c: 'var(--st-awaiting)' },
+  in_progress: { label: 'In Progress', c: 'var(--st-progress)' },
+  completed:   { label: 'Service Completed', c: 'var(--st-completed)' },
+  referred:    { label: 'Referred to External Organisation', c: 'var(--st-referred)' },
+  follow_up:   { label: 'Follow-up Required', c: 'var(--st-follow)' },
+  unable:      { label: 'Unable to Assist', c: 'var(--st-unable)' }
+};
+const VISIT_STATUS = { awaiting: 'Waiting', in_progress: 'In progress', follow_up: 'Follow-up', closed: 'Closed' };
+const AGE_GROUPS = ['Under 18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
+const GENDERS = ['Female', 'Male', 'Non-binary', 'Prefer not to say'];
+const STAFF = ['super_admin', 'management', 'hub_manager', 'hub_staff', 'programme_manager'];
+const MANAGERS = ['super_admin', 'management'];
+const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'];
+
+const A = { session: null, memberships: [], m: null, ref: {}, view: null, charts: [], poll: null, seen: new Set(), sound: false };
+
+/* ---------- utilities ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtN = n => (n == null || isNaN(n)) ? '–' : Number(n).toLocaleString('en-ZA');
+const fmtR = n => 'R ' + Number(n || 0).toLocaleString('en-ZA', { maximumFractionDigits: 0 });
+const pct = (a, b) => b ? Math.round(1000 * a / b) / 10 : null;
+const fmtPct = v => v == null ? '–' : v + '%';
+const tz = 'Africa/Johannesburg';
+const fmtDate = d => d ? new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', timeZone: tz }) : '';
+const fmtTime = d => d ? new Date(d).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', timeZone: tz }) : '';
+const fmtDT = d => d ? fmtDate(d) + ' ' + fmtTime(d) : '';
+const isoDay = d => new Date(d).toLocaleDateString('en-CA', { timeZone: tz });
+const today = () => isoDay(new Date());
+const addDays = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const monthLabel = ym => { const [y, m] = ym.split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-ZA', { month: 'short', year: '2-digit' }); };
+const ago = d => { const m = Math.round((Date.now() - new Date(d)) / 60000); if (m < 1) return 'just now'; if (m < 60) return m + ' min ago'; const h = Math.floor(m / 60); if (h < 24) return h + 'h ' + (m % 60) + 'm ago'; return fmtDate(d); };
+const uniq = arr => [...new Set(arr)];
+const groupBy = (arr, fn) => arr.reduce((acc, x) => { const k = fn(x); (acc[k] = acc[k] || []).push(x); return acc; }, {});
+const role = () => A.m && A.m.role;
+const can = roles => roles.includes(role());
+const byId = (list, id) => (list || []).find(x => x.id === id);
+const nameOf = (list, id, fb = '—') => (byId(list, id) || {}).name || fb;
+const memberName = id => (byId(A.ref.members, id) || {}).full_name || '—';
+function toast(msg, err) { const t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = msg; $('toasts').appendChild(t); setTimeout(() => t.remove(), err ? 6000 : 3500); }
+function fail(e) { console.error(e); toast((e && (e.message || e.error_description)) || 'Something went wrong', true); }
+async function q(p) { const { data, error } = await p; if (error) throw error; return data; }
+async function all(build) { const out = []; let from = 0; for (;;) { const d = await q(build().range(from, from + 999)); out.push(...d); if (d.length < 1000) break; from += 1000; } return out; }
+const opts = (list, sel, blank, label = x => x.name, val = x => x.id) => (blank != null ? `<option value="">${esc(blank)}</option>` : '') + list.map(x => `<option value="${esc(val(x))}" ${String(val(x)) === String(sel) ? 'selected' : ''}>${esc(label(x))}</option>`).join('');
+const sopts = (list, sel, blank) => opts(list.map(x => ({ id: x, name: x })), sel, blank);
+const chip = (txt, color) => `<span class="chip">${color ? `<span class="dot" style="background:${color}"></span>` : ''}${esc(txt)}</span>`;
+const statusChip = st => chip(STATUS[st] ? STATUS[st].label : st, STATUS[st] && STATUS[st].c);
+function killCharts() { A.charts.forEach(c => c.destroy()); A.charts = []; }
+
+/* ---------- modal / drawer ---------- */
+function modal(title, body, { save, saveLabel = 'Save', wide, danger } = {}) {
+  const w = document.createElement('div'); w.className = 'modal';
+  w.innerHTML = `<div class="scrim"></div><div class="mc" style="position:relative;z-index:61;${wide ? 'width:min(900px,100%)' : ''}">
+    <div class="mh"><h3>${esc(title)}</h3><button class="x" data-close>×</button></div>
+    <div class="mb">${body}</div>
+    <div class="mf"><button class="btn sec" data-close>Cancel</button>${save ? `<button class="btn ${danger ? 'danger' : ''}" data-save>${esc(saveLabel)}</button>` : ''}</div></div>`;
+  document.body.appendChild(w);
+  const close = () => w.remove();
+  w.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
+  w.querySelector('.scrim').onclick = close;
+  if (save) w.querySelector('[data-save]').onclick = async e => {
+    e.target.disabled = true;
+    try { const r = await save(w); if (r !== false) close(); } catch (err) { fail(err); } finally { e.target.disabled = false; }
+  };
+  return w;
+}
+function confirmDlg(title, text, label = 'Confirm') { return new Promise(res => { const m = modal(title, `<p>${esc(text)}</p>`, { save: () => res(true), saveLabel: label, danger: true }); m.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => res(false))); }); }
+function drawer(html) {
+  closeDrawer();
+  const s = document.createElement('div'); s.className = 'scrim'; s.id = 'dscrim'; s.onclick = closeDrawer;
+  const d = document.createElement('div'); d.className = 'drawer'; d.id = 'drawer'; d.innerHTML = html;
+  document.body.append(s, d);
+  return d;
+}
+function closeDrawer() { ['drawer', 'dscrim'].forEach(id => { const e = $(id); if (e) e.remove(); }); }
+
+/* =====================================================================
+   AUTH
+   ===================================================================== */
+function renderAuth(mode = 'login', msg = '') {
+  stopPoll();
+  $('root').innerHTML = `
+  <div class="auth">
+    <div class="art">
+      <div style="font-weight:800;letter-spacing:.02em;opacity:.9">${esc(CFG.appName)}</div>
+      <div>
+        <h1>Visitor management & impact measurement for community hubs</h1>
+        <p>Register visitors, track the help they receive, collect feedback and turn it into evidence your donors can trust.</p>
+        <ul><li>Tablet kiosk sign-in for every Hub</li><li>Live service queue for Hub staff</li><li>Dashboards across all Hubs & programmes</li><li>Donor impact reports in PDF & Excel</li><li>Built for POPIA from day one</li></ul>
+      </div>
+      <div style="font-size:13px;opacity:.7">Built by iHubSA · Turning Business Problems Into Digital Solutions</div>
+    </div>
+    <div class="form"><div class="box" id="authbox"></div></div>
+  </div>`;
+  const box = $('authbox');
+  if (mode === 'login') {
+    box.innerHTML = `<h2>Sign in</h2><p class="muted">Staff, management and donor accounts.</p>
+      <div class="fld"><label class="lb">Email</label><input class="i" id="em" type="email" autocomplete="username">
+      <label class="lb">Password</label><input class="i" id="pw" type="password" autocomplete="current-password"></div>
+      <div style="color:var(--danger);min-height:22px;margin:10px 0;font-weight:600" id="am">${esc(msg)}</div>
+      <button class="btn" style="width:100%;padding:12px" id="go">Sign in</button>
+      <div class="row" style="justify-content:space-between;margin-top:16px;font-size:14px">
+        <a href="#" id="toSignup">First time? Create your account</a><a href="#" id="toReset">Forgot password?</a></div>
+      <p class="faint" style="font-size:12.5px;margin-top:26px">Setting up a tablet? Open <a href="kiosk.html">kiosk.html</a> on the tablet and paste the Hub's kiosk link.</p>`;
+    const go = async () => {
+      $('am').textContent = '';
+      const { error } = await sb.auth.signInWithPassword({ email: $('em').value.trim(), password: $('pw').value });
+      if (error) $('am').textContent = error.message;
+    };
+    $('go').onclick = go; $('pw').onkeydown = e => e.key === 'Enter' && go();
+    $('toSignup').onclick = e => { e.preventDefault(); renderAuth('signup'); };
+    $('toReset').onclick = e => { e.preventDefault(); renderAuth('reset'); };
+  } else if (mode === 'signup') {
+    box.innerHTML = `<h2>Create your account</h2><p class="muted">Use the email address your administrator invited. Your access is set by them.</p>
+      <div class="fld"><label class="lb">Email</label><input class="i" id="em" type="email">
+      <label class="lb">Choose a password (min 8 characters)</label><input class="i" id="pw" type="password" autocomplete="new-password"></div>
+      <div style="min-height:22px;margin:10px 0;font-weight:600" id="am"></div>
+      <button class="btn" style="width:100%;padding:12px" id="go">Create account</button>
+      <p style="margin-top:16px"><a href="#" id="back">Back to sign in</a></p>`;
+    $('go').onclick = async () => {
+      if ($('pw').value.length < 8) { $('am').textContent = 'Password must be at least 8 characters.'; return; }
+      const { data, error } = await sb.auth.signUp({ email: $('em').value.trim(), password: $('pw').value, options: { emailRedirectTo: location.origin + location.pathname } });
+      $('am').style.color = error ? 'var(--danger)' : 'var(--ok)';
+      $('am').textContent = error ? error.message : (data.session ? 'Account created.' : 'Check your email to confirm your account, then sign in.');
+    };
+    $('back').onclick = e => { e.preventDefault(); renderAuth('login'); };
+  } else if (mode === 'reset') {
+    box.innerHTML = `<h2>Reset password</h2><p class="muted">We'll email you a link to choose a new password.</p>
+      <div class="fld"><label class="lb">Email</label><input class="i" id="em" type="email"></div>
+      <div style="min-height:22px;margin:10px 0;font-weight:600" id="am"></div>
+      <button class="btn" style="width:100%;padding:12px" id="go">Send reset link</button>
+      <p style="margin-top:16px"><a href="#" id="back">Back to sign in</a></p>`;
+    $('go').onclick = async () => {
+      const { error } = await sb.auth.resetPasswordForEmail($('em').value.trim(), { redirectTo: location.origin + location.pathname });
+      $('am').style.color = error ? 'var(--danger)' : 'var(--ok)';
+      $('am').textContent = error ? error.message : 'If that email has an account, a reset link is on its way.';
+    };
+    $('back').onclick = e => { e.preventDefault(); renderAuth('login'); };
+  } else if (mode === 'newpw') {
+    box.innerHTML = `<h2>Choose a new password</h2>
+      <div class="fld"><label class="lb">New password (min 8 characters)</label><input class="i" id="pw" type="password" autocomplete="new-password"></div>
+      <div style="min-height:22px;margin:10px 0;font-weight:600;color:var(--danger)" id="am"></div>
+      <button class="btn" style="width:100%;padding:12px" id="go">Save password</button>`;
+    $('go').onclick = async () => {
+      if ($('pw').value.length < 8) { $('am').textContent = 'Password must be at least 8 characters.'; return; }
+      const { error } = await sb.auth.updateUser({ password: $('pw').value });
+      if (error) $('am').textContent = error.message; else { toast('Password updated'); recovering = false; const { data } = await sb.auth.getSession(); A.session = data.session; startApp(true); }
+    };
+  }
+}
+
+let recovering = false;
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') { recovering = true; renderAuth('newpw'); return; }
+  if (recovering) return;
+  if (event === 'SIGNED_IN' && session) { A.session = session; startApp(); }
+  if (event === 'SIGNED_OUT') { A.session = null; A.m = null; A.startedFor = null; renderAuth(); }
+  if (event === 'TOKEN_REFRESHED') A.session = session;
+});
+
+async function boot() {
+  const { data } = await sb.auth.getSession();
+  if (recovering) return;
+  if (data.session) { A.session = data.session; startApp(); } else renderAuth();
+}
+
+async function startApp(force) {
+  const uid = A.session && A.session.user.id;
+  if (!force && A.startedFor === uid) return;
+  A.startedFor = uid;
+  $('root').innerHTML = '<div class="spin"></div>';
+  try {
+    A.memberships = await q(sb.rpc('my_memberships'));
+  } catch (e) {
+    $('root').innerHTML = `<div class="page"><div class="card"><h3>Could not connect to the database</h3><p class="muted">${esc(e.message)}</p>
+      <p class="muted">If this says the schema is not exposed, add <b>${esc(CFG.schema)}</b> under Supabase → Project Settings → Data API → Exposed schemas.</p>
+      <button class="btn sec" onclick="sb.auth.signOut()">Sign out</button></div></div>`;
+    return;
+  }
+  if (!A.memberships.length) {
+    $('root').innerHTML = `<div class="auth" style="grid-template-columns:1fr"><div class="form"><div class="box">
+      <h2>No access yet</h2><p class="muted">You're signed in as <b>${esc(A.session.user.email)}</b>, but this account hasn't been added to an organisation. Ask your administrator to add this email under <b>Admin → Users</b>, then sign in again.</p>
+      <button class="btn sec" onclick="sb.auth.signOut()">Sign out</button></div></div></div>`;
+    return;
+  }
+  const last = (() => { try { return localStorage.getItem('npohub.org'); } catch (e) { return null; } })();
+  A.m = A.memberships.find(x => x.org_id === last) || A.memberships[0];
+  await loadRef();
+  renderShell();
+  go(defaultView());
+}
+
+async function switchOrg(orgId) {
+  A.m = A.memberships.find(x => x.org_id === orgId);
+  try { localStorage.setItem('npohub.org', orgId); } catch (e) {}
+  await loadRef(); renderShell(); go(defaultView());
+}
+
+async function loadRef() {
+  const o = A.m.org_id;
+  const [org, regions, hubs, cats, progs, comms, members] = await Promise.all([
+    q(sb.from('organisations').select('*').eq('id', o).single()),
+    q(sb.from('regions').select('*').eq('org_id', o).order('name')),
+    q(sb.from('hubs').select('*').eq('org_id', o).order('name')),
+    q(sb.from('service_categories').select('*').eq('org_id', o).order('sort_order')),
+    q(sb.from('programmes').select('*').eq('org_id', o).order('name')),
+    q(sb.from('communities').select('*').eq('org_id', o).order('name')),
+    q(sb.from('members').select('*').eq('org_id', o).order('full_name'))
+  ]);
+  let donors = [], allocs = [], hubSvc = [];
+  if (role() !== 'hub_staff') {
+    donors = await q(sb.from('donors').select('*').eq('org_id', o).order('name'));
+    allocs = await q(sb.from('funding_allocations').select('*').eq('org_id', o).order('start_date'));
+  }
+  hubSvc = await q(sb.from('hub_services').select('*').eq('org_id', o));
+  A.ref = { org, regions, hubs, cats, progs, comms, members, donors, allocs, hubSvc };
+}
+
+function myHubs() {
+  const hubs = A.ref.hubs.filter(h => h.active);
+  if (can(MANAGERS)) return hubs;
+  const ids = A.m.hub_ids || [];
+  if (role() === 'programme_manager' && !ids.length) return hubs;
+  return hubs.filter(h => ids.includes(h.id));
+}
+
+/* =====================================================================
+   SHELL & NAVIGATION
+   ===================================================================== */
+const VIEWS = [
+  { k: 'queue', t: 'Service Queue', ic: '🛎️', roles: STAFF },
+  { k: 'visitors', t: 'Visitors', ic: '👥', roles: STAFF },
+  { k: 'dashboard', t: 'Dashboard', ic: '📊', roles: ['super_admin', 'management', 'hub_manager', 'programme_manager'] },
+  { k: 'donor', t: 'Donor Impact', ic: '💚', roles: ['super_admin', 'management', 'hub_manager', 'programme_manager', 'donor_viewer'] },
+  { k: 'reports', t: 'Reports & Export', ic: '📄', roles: ['super_admin', 'management', 'hub_manager', 'programme_manager'] },
+  { k: 'admin', t: 'Administration', ic: '⚙️', roles: ['super_admin', 'management', 'hub_manager'] }
+];
+const defaultView = () => role() === 'donor_viewer' ? 'donor' : MANAGERS.includes(role()) ? 'dashboard' : 'queue';
+
+function renderShell() {
+  $('root').innerHTML = `
+  <div class="shell">
+    <aside class="side">
+      <div class="brandrow"><div class="lg">${esc((A.ref.org.name || 'N').replace(/[^A-Za-z]/g, '').slice(0, 1))}</div><div><b>${esc(A.ref.org.name)}</b><span>${esc(CFG.appName)}</span></div></div>
+      ${VIEWS.filter(v => v.roles.includes(role())).map(v => `<button class="nav" data-v="${v.k}"><span class="ic">${v.ic}</span>${v.t}${v.k === 'queue' ? '<span class="ct hidden" id="qct"></span>' : ''}</button>`).join('')}
+      <div class="foot">
+        <div><b style="color:#fff">${esc(A.m.full_name)}</b><br>${esc(ROLE_LABEL[role()])}</div>
+        ${A.memberships.length > 1 ? `<select class="i" id="orgsw" style="margin-top:8px;width:100%;font-size:12px">${opts(A.memberships.map(x => ({ id: x.org_id, name: x.org_name })), A.m.org_id)}</select>` : ''}
+        <button onclick="sb.auth.signOut()">Sign out</button>
+      </div>
+    </aside>
+    <div class="content"><div class="topbar"><h1 id="title"></h1><div class="sp"></div><div id="tools" class="row"></div></div><div class="page" id="page"></div></div>
+  </div>`;
+  document.querySelectorAll('.nav').forEach(b => b.onclick = () => go(b.dataset.v));
+  if ($('orgsw')) $('orgsw').onchange = e => switchOrg(e.target.value);
+}
+
+function go(view) {
+  stopPoll(); killCharts(); closeDrawer();
+  A.view = view;
+  document.querySelectorAll('.nav').forEach(b => b.classList.toggle('on', b.dataset.v === view));
+  const v = VIEWS.find(x => x.k === view);
+  $('title').textContent = v ? v.t : '';
+  $('tools').innerHTML = '';
+  $('page').innerHTML = '<div class="spin"></div>';
+  ({ queue: vQueue, visitors: vVisitors, dashboard: vDashboard, donor: vDonor, reports: vReports, admin: vAdmin }[view])().catch(fail);
+}
+function stopPoll() { if (A.poll) clearInterval(A.poll); A.poll = null; }
+
+/* =====================================================================
+   SERVICE QUEUE (Module 3)
+   ===================================================================== */
+const VISIT_SELECT = 'id, org_id, hub_id, visitor_id, ticket_no, visited_at, is_first_visit, status, need_description, unmet_other, feedback_token, source, assigned_member_id, completed_at, ' +
+  'visitor:visitors(id, full_name, mobile, email, community, age_group, gender, is_minor, guardian_consent, created_at, anonymised_at), ' +
+  'visit_services(id, category_id, status, is_available, programme_id, assigned_member_id, service_provided, referral_org, resolved, follow_up_date, updated_at), feedback(id, rating, assisted, staff_helpful, visit_again, improve, additional_needs, created_at)';
+const fbOf = v => Array.isArray(v.feedback) ? v.feedback[0] : v.feedback;
+
+const QS = { hub: '', tab: 'awaiting' };
+async function vQueue() {
+  const hubs = myHubs();
+  if (QS.hub && !hubs.find(h => h.id === QS.hub)) QS.hub = '';
+  if (!QS.hub && hubs.length === 1) QS.hub = hubs[0].id;
+  $('tools').innerHTML = `
+    <select class="i" id="qhub">${opts(hubs, QS.hub, hubs.length > 1 ? 'All my hubs' : null)}</select>
+    <label class="row" style="gap:6px;font-size:13px;color:var(--muted)"><input type="checkbox" id="qsound" ${A.sound ? 'checked' : ''}> Sound alert</label>
+    <button class="btn" id="walkin">+ Walk-in registration</button>`;
+  $('qhub').onchange = e => { QS.hub = e.target.value; loadQueue(true); };
+  $('qsound').onchange = e => { A.sound = e.target.checked; if (A.sound) beep(); };
+  $('walkin').onclick = () => walkIn();
+  A.seen = new Set();
+  await loadQueue(true);
+  A.poll = setInterval(() => loadQueue(false).catch(() => {}), 20000);
+}
+
+async function loadQueue(first) {
+  const hubIds = QS.hub ? [QS.hub] : myHubs().map(h => h.id);
+  if (!hubIds.length) { $('page').innerHTML = '<div class="empty">You are not assigned to any Hub yet. Ask your administrator to allocate you to a Hub.</div>'; return; }
+  const since = new Date(Date.now() - 30 * 864e5).toISOString();
+  const startToday = new Date(today() + 'T00:00:00+02:00').toISOString();
+  const rows = await q(sb.from('visits').select(VISIT_SELECT).eq('org_id', A.m.org_id).in('hub_id', hubIds)
+    .or(`status.neq.closed,visited_at.gte.${startToday}`).gte('visited_at', since).order('visited_at', { ascending: true }).limit(500));
+  const tabs = {
+    awaiting: rows.filter(v => v.status === 'awaiting'),
+    in_progress: rows.filter(v => v.status === 'in_progress'),
+    follow_up: rows.filter(v => v.status === 'follow_up'),
+    closed: rows.filter(v => v.status === 'closed').reverse()
+  };
+  // new arrivals
+  const newOnes = tabs.awaiting.filter(v => !A.seen.has(v.id));
+  tabs.awaiting.forEach(v => A.seen.add(v.id));
+  if (!first && newOnes.length) { newOnes.forEach(v => toast(`New visitor at ${nameOf(A.ref.hubs, v.hub_id)} — ticket ${v.ticket_no}`)); if (A.sound) beep(); }
+  const ct = $('qct'); if (ct) { ct.textContent = tabs.awaiting.length; ct.classList.toggle('hidden', !tabs.awaiting.length); }
+  if (A.view !== 'queue') return;
+  const list = tabs[QS.tab];
+  $('page').innerHTML = `
+    <div class="tabs">${[['awaiting', 'Waiting'], ['in_progress', 'In progress'], ['follow_up', 'Follow-up'], ['closed', 'Completed today']]
+      .map(([k, l]) => `<button class="tab ${QS.tab === k ? 'on' : ''}" data-t="${k}">${l}<span class="n">${tabs[k].length}</span></button>`).join('')}
+      <span class="faint" style="margin-left:auto;font-size:12.5px;align-self:center">Refreshes every 20 seconds</span></div>
+    ${list.length ? `<div class="qgrid">${list.map(qCard).join('')}</div>` :
+      `<div class="empty">${QS.tab === 'awaiting' ? 'Nobody is waiting right now. New kiosk registrations appear here automatically.' : 'Nothing here.'}</div>`}`;
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => { QS.tab = b.dataset.t; loadQueue(false); });
+  document.querySelectorAll('.qcard').forEach(c => c.onclick = () => openVisit(c.dataset.id));
+}
+
+function qCard(v) {
+  const vi = v.visitor || {};
+  return `<div class="qcard" data-id="${v.id}">
+    <div class="tk">${esc(v.ticket_no || '–')}</div>
+    <div style="min-width:0;flex:1">
+      <div class="row" style="gap:6px"><span class="nm">${esc(vi.full_name)}</span>
+        ${v.is_first_visit ? '<span class="badge new">First visit</span>' : '<span class="badge grey">Returning</span>'}
+        ${vi.is_minor ? '<span class="badge minor">Under 18</span>' : ''}</div>
+      <div class="meta">${esc(nameOf(A.ref.hubs, v.hub_id))} · ${ago(v.visited_at)}${v.assigned_member_id ? ' · ' + esc(memberName(v.assigned_member_id)) : ''}</div>
+      <div>${(v.visit_services || []).map(s => chip(nameOf(A.ref.cats, s.category_id), STATUS[s.status].c)).join('')}</div>
+      ${v.need_description ? `<div class="faint" style="font-size:12.5px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">“${esc(v.need_description)}”</div>` : ''}
+    </div></div>`;
+}
+
+function beep() { try { const c = new (window.AudioContext || window.webkitAudioContext)(); const o = c.createOscillator(); const g = c.createGain(); o.frequency.value = 880; g.gain.value = .08; o.connect(g); g.connect(c.destination); o.start(); setTimeout(() => { o.frequency.value = 1175; }, 150); setTimeout(() => { o.stop(); c.close(); }, 320); } catch (e) {} }
+
+/* ---------- visit drawer ---------- */
+async function openVisit(id) {
+  const d = drawer('<div class="spin"></div>');
+  try {
+    const v = await q(sb.from('visits').select(VISIT_SELECT).eq('id', id).single());
+    const [notes, history] = await Promise.all([
+      q(sb.from('visit_notes').select('*').eq('visit_id', id).order('created_at')),
+      q(sb.from('visits').select('id, hub_id, visited_at, ticket_no, status, visit_services(category_id, status, service_provided, referral_org), feedback(rating)').eq('visitor_id', v.visitor_id).order('visited_at', { ascending: false }).limit(50))
+    ]);
+    renderVisit(d, v, notes, history);
+  } catch (e) { fail(e); closeDrawer(); }
+}
+
+function renderVisit(d, v, notes, history) {
+  const vi = v.visitor || {};
+  const fbk = fbOf(v);
+  const staff = A.ref.members.filter(m => m.active && STAFF.includes(m.role));
+  const progs = A.ref.progs.filter(p => p.active);
+  const editable = can(STAFF);
+  d.innerHTML = `
+  <header>
+    <div class="qcard" style="padding:0;border:0;box-shadow:none;cursor:default"><div class="tk">${esc(v.ticket_no || '–')}</div></div>
+    <div style="min-width:0">
+      <div class="row" style="gap:6px"><h2 style="margin:0;font-size:20px">${esc(vi.full_name)}</h2>
+        ${v.is_first_visit ? '<span class="badge new">First visit</span>' : '<span class="badge grey">Returning</span>'}
+        ${vi.is_minor ? '<span class="badge minor">Under 18' + (vi.guardian_consent ? ' · guardian consent' : '') + '</span>' : ''}</div>
+      <div class="muted" style="font-size:13.5px;margin-top:4px">${esc(nameOf(A.ref.hubs, v.hub_id))} · ${fmtDT(v.visited_at)} · ${v.source === 'kiosk' ? 'Kiosk' : v.source === 'offline' ? 'Kiosk (offline)' : 'Staff capture'}</div>
+    </div>
+    <button class="x" onclick="closeDrawer()">×</button>
+  </header>
+  <div class="body">
+    <div class="card"><div class="grid g3" style="gap:8px 16px;font-size:14px">
+      <div><div class="faint" style="font-size:12px">Mobile</div>${esc(vi.mobile)}</div>
+      <div><div class="faint" style="font-size:12px">Email</div>${esc(vi.email || '—')}</div>
+      <div><div class="faint" style="font-size:12px">Community</div>${esc(vi.community || '—')}</div>
+      <div><div class="faint" style="font-size:12px">Age group</div>${esc(vi.age_group || '—')}</div>
+      <div><div class="faint" style="font-size:12px">Gender</div>${esc(vi.gender || '—')}</div>
+      <div><div class="faint" style="font-size:12px">Visit status</div>${esc(VISIT_STATUS[v.status])}</div></div>
+      ${v.need_description ? `<div class="note" style="margin-top:12px"><b>What they need:</b> ${esc(v.need_description)}</div>` : ''}
+      ${v.unmet_other ? `<div class="note warn" style="margin-top:8px"><b>Other unmet need:</b> ${esc(v.unmet_other)}</div>` : ''}
+      ${editable ? `<div class="row" style="margin-top:12px">
+        <button class="btn sm" id="startAll">▶ Start helping</button>
+        <button class="btn sm sec" id="doneAll">✓ Mark all completed</button></div>` : ''}
+    </div>
+
+    <div><h3 style="margin:6px 0 8px">Services requested</h3><div class="grid" style="gap:10px" id="svcs">
+      ${(v.visit_services || []).map(s => `
+        <div class="svc" data-sid="${s.id}">
+          <div class="hd"><b>${esc((byId(A.ref.cats, s.category_id) || {}).icon || '')} ${esc(nameOf(A.ref.cats, s.category_id))}</b>
+            ${s.is_available ? '' : '<span class="badge minor">Not offered at this Hub · unmet need</span>'}
+            <span style="margin-left:auto">${statusChip(s.status)}</span></div>
+          ${editable ? `<div class="two fld">
+            <div><label class="lb">Status</label><select class="i" data-f="status">${opts(Object.entries(STATUS).map(([k, x]) => ({ id: k, name: x.label })), s.status)}</select></div>
+            <div><label class="lb">Assisted by</label><select class="i" data-f="assigned_member_id">${opts(staff, s.assigned_member_id, 'Not assigned', m => m.full_name)}</select></div>
+            <div><label class="lb">Programme</label><select class="i" data-f="programme_id">${opts(progs, s.programme_id, 'No programme')}</select></div>
+            <div><label class="lb">Follow-up date</label><input class="i" type="date" data-f="follow_up_date" value="${esc(s.follow_up_date || '')}"></div>
+            <div style="grid-column:1/-1"><label class="lb">Service provided</label><input class="i" data-f="service_provided" value="${esc(s.service_provided || '')}" placeholder="What was done for the visitor"></div>
+            <div><label class="lb">Referred to (external organisation)</label><input class="i" data-f="referral_org" list="reforgs" value="${esc(s.referral_org || '')}"></div>
+            <div><label class="lb">Request resolved?</label><select class="i" data-f="resolved">${opts([{ id: 'true', name: 'Yes' }, { id: 'false', name: 'No' }], s.resolved == null ? '' : String(s.resolved), 'Not yet')}</select></div>
+          </div>
+          <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn sm" data-save="${s.id}">Save service</button></div>` :
+          `<div class="muted" style="font-size:13.5px">${esc(s.service_provided || '')}</div>`}
+        </div>`).join('')}
+    </div>
+    <datalist id="reforgs">${['SEDA', 'SEFA', 'SASSA', 'NYDA', 'Department of Employment & Labour', 'Legal Aid SA', 'Local clinic', 'Home Affairs'].map(x => `<option value="${x}">`).join('')}</datalist>
+    ${editable ? `<div class="row" style="margin-top:10px"><select class="i" id="addcat">${opts(A.ref.cats.filter(c => c.active && !(v.visit_services || []).some(s => s.category_id === c.id)), '', 'Add another service…')}</select><button class="btn sm sec" id="addsvc">Add</button></div>` : ''}
+    </div>
+
+    <div class="card"><h3>Visitor feedback</h3>
+      ${fbk ? `<div class="row" style="margin-top:8px"><span style="font-size:26px;font-weight:800">${fbk.rating || '–'}/5</span>
+        <span class="muted">Assisted: ${esc(fbk.assisted || '–')} · Staff helpful: ${esc(fbk.staff_helpful || '–')} · Would return: ${esc(fbk.visit_again || '–')}</span></div>
+        ${fbk.improve ? `<div class="note" style="margin-top:8px">Improve: ${esc(fbk.improve)}</div>` : ''}
+        ${fbk.additional_needs ? `<div class="note" style="margin-top:8px">Other needs: ${esc(fbk.additional_needs)}</div>` : ''}`
+      : `<div class="sub">Once the service is delivered, ask the visitor for 30 seconds of feedback.</div>
+        <div class="row"><button class="btn sm" id="fbOpen">Open feedback on this device</button><button class="btn sm sec" id="fbCopy">Copy feedback link</button>
+        <span class="faint" style="font-size:12.5px">Or the visitor can use the kiosk with ticket <b>${esc(v.ticket_no)}</b> + last 4 digits of their mobile.</span></div>`}
+    </div>
+
+    <div class="card"><h3>Notes</h3><div class="sub">Interaction notes are visible to staff with access to this Hub.</div>
+      <div class="timeline">${notes.map(n => `<div class="tl"><div class="d">${fmtDate(n.created_at)}<br>${fmtTime(n.created_at)}</div><div><b>${esc(memberName(n.member_id))}</b><br>${esc(n.note)}</div></div>`).join('') || '<div class="faint">No notes yet.</div>'}</div>
+      ${editable ? `<textarea class="i" id="note" placeholder="Add a note about this interaction" style="margin-top:12px"></textarea>
+      <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn sm" id="addnote">Add note</button></div>` : ''}
+    </div>
+
+    <div class="card"><h3>Beneficiary journey</h3><div class="sub">${history.length} visit${history.length === 1 ? '' : 's'} since ${fmtDate(vi.created_at)}</div>
+      <div class="timeline">${history.map(h => `<div class="tl"><div class="d">${fmtDate(h.visited_at)}</div><div>
+        <div style="font-weight:600">${esc(nameOf(A.ref.hubs, h.hub_id))}${h.id === v.id ? ' <span class="badge">This visit</span>' : ''}</div>
+        <div>${(h.visit_services || []).map(s => chip(nameOf(A.ref.cats, s.category_id) + (s.referral_org ? ' → ' + s.referral_org : ''), STATUS[s.status].c)).join('')}</div></div></div>`).join('')}</div>
+    </div>
+  </div>`;
+
+  const refresh = () => openVisit(v.id).then(() => A.view === 'queue' && loadQueue(false));
+  d.querySelectorAll('[data-save]').forEach(b => b.onclick = async () => {
+    const box = d.querySelector(`[data-sid="${b.dataset.save}"]`);
+    const upd = { updated_by: A.m.member_id };
+    box.querySelectorAll('[data-f]').forEach(el => { let val = el.value; if (el.dataset.f === 'resolved') val = val === '' ? null : val === 'true'; else if (val === '') val = null; upd[el.dataset.f] = val; });
+    if (upd.status === 'referred' && !upd.referral_org) return toast('Enter the organisation the visitor was referred to', true);
+    if (['completed', 'referred'].includes(upd.status) && upd.resolved == null) upd.resolved = true;
+    if (upd.status === 'unable' && upd.resolved == null) upd.resolved = false;
+    if (!upd.assigned_member_id && upd.status !== 'awaiting') upd.assigned_member_id = A.m.member_id;
+    try { await q(sb.from('visit_services').update(upd).eq('id', b.dataset.save)); toast('Service updated'); refresh(); } catch (e) { fail(e); }
+  });
+  const bulk = async (from, to) => {
+    const ids = (v.visit_services || []).filter(s => from.includes(s.status) && s.is_available).map(s => s.id);
+    if (!ids.length) return toast('Nothing to update');
+    const upd = { status: to, assigned_member_id: A.m.member_id, updated_by: A.m.member_id };
+    if (to === 'completed') upd.resolved = true;
+    try {
+      await q(sb.from('visit_services').update(upd).in('id', ids));
+      if (to === 'in_progress') await q(sb.from('visits').update({ assigned_member_id: A.m.member_id }).eq('id', v.id));
+      toast(to === 'completed' ? 'Marked completed' : 'You are now helping this visitor'); refresh();
+    } catch (e) { fail(e); }
+  };
+  if ($('startAll')) $('startAll').onclick = () => bulk(['awaiting'], 'in_progress');
+  if ($('doneAll')) $('doneAll').onclick = () => bulk(['awaiting', 'in_progress', 'follow_up'], 'completed');
+  if ($('addsvc')) $('addsvc').onclick = async () => {
+    const c = $('addcat').value; if (!c) return;
+    const avail = A.ref.hubSvc.some(h => h.hub_id === v.hub_id && h.category_id === c);
+    const prog = A.ref.progs.find(p => p.category_id === c && p.active);
+    try { await q(sb.from('visit_services').insert({ org_id: v.org_id, visit_id: v.id, category_id: c, is_available: avail, status: avail ? 'awaiting' : 'unable', programme_id: avail && prog ? prog.id : null })); refresh(); } catch (e) { fail(e); }
+  };
+  if ($('addnote')) $('addnote').onclick = async () => {
+    const t = $('note').value.trim(); if (!t) return;
+    try { await q(sb.from('visit_notes').insert({ org_id: v.org_id, visit_id: v.id, member_id: A.m.member_id, note: t })); refresh(); } catch (e) { fail(e); }
+  };
+  const fbUrl = new URL('kiosk.html?fb=' + v.feedback_token, location.href).href;
+  if ($('fbOpen')) $('fbOpen').onclick = () => window.open(fbUrl, '_blank');
+  if ($('fbCopy')) $('fbCopy').onclick = () => navigator.clipboard.writeText(fbUrl).then(() => toast('Feedback link copied — send it to the visitor\'s phone'));
+}
+
+/* ---------- walk-in registration ---------- */
+function walkIn() {
+  const hubs = myHubs().filter(h => can(MANAGERS) || (A.m.hub_ids || []).includes(h.id));
+  if (!hubs.length) return toast('You need to be assigned to a Hub to register walk-ins', true);
+  const st = { services: new Set() };
+  const w = modal('Walk-in registration', `
+    <div class="note" style="margin-top:12px">Use this when a visitor can't use the tablet. Read the privacy notice to them and record their consent.</div>
+    <div class="fld grid g2" style="gap:0 14px">
+      <div><label class="lb">Hub</label><select class="i" id="w_hub">${opts(hubs, QS.hub || hubs[0].id)}</select></div>
+      <div><label class="lb">Mobile number</label><input class="i" id="w_mobile" inputmode="tel" placeholder="082 123 4567"></div>
+      <div><label class="lb">Name and surname</label><input class="i" id="w_name"></div>
+      <div><label class="lb">Email (optional)</label><input class="i" id="w_email" type="email"></div>
+      <div><label class="lb">Age group</label><select class="i" id="w_age">${sopts(AGE_GROUPS, '', 'Select…')}</select></div>
+      <div><label class="lb">Gender</label><select class="i" id="w_gender">${sopts(GENDERS, '', 'Not stated')}</select></div>
+      <div style="grid-column:1/-1"><label class="lb">Community</label><input class="i" id="w_comm" list="w_comms"><datalist id="w_comms">${uniq(A.ref.comms.map(c => c.name)).map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
+    </div>
+    <label class="lb">Services required</label><div class="checks" id="w_svcs"></div>
+    <label class="lb">What assistance do they need? (optional)</label><textarea class="i" id="w_need"></textarea>
+    <label class="row" style="margin-top:12px;gap:8px"><input type="checkbox" id="w_consent"> The visitor heard the privacy notice and gave consent</label>
+    <label class="row hidden" style="margin-top:8px;gap:8px" id="w_gwrap"><input type="checkbox" id="w_guardian"> A parent/guardian is present and gave consent (under 18)</label>`,
+    { saveLabel: 'Register visitor', save: async () => {
+      const hub = $('w_hub').value;
+      const avail = A.ref.cats.filter(c => c.active && A.ref.hubSvc.some(h => h.hub_id === hub && h.category_id === c.id)).map(c => c.id);
+      const chosen = [...w.querySelectorAll('#w_svcs input:checked')].map(i => i.value);
+      const p = { full_name: $('w_name').value, mobile: $('w_mobile').value, email: $('w_email').value, age_group: $('w_age').value, gender: $('w_gender').value,
+                  community: $('w_comm').value, consent: $('w_consent').checked, guardian_consent: $('w_guardian').checked, need_description: $('w_need').value,
+                  services: chosen.filter(c => avail.includes(c)), unmet: chosen.filter(c => !avail.includes(c)) };
+      const r = await q(sb.rpc('staff_register', { p_hub: hub, p }));
+      toast(`Registered — ticket ${r.ticket}${r.returning ? ' (returning visitor)' : ''}`);
+      if (A.view === 'queue') loadQueue(false);
+    } });
+  const drawSvcs = () => {
+    const hub = $('w_hub').value;
+    $('w_svcs').innerHTML = A.ref.cats.filter(c => c.active).map(c => {
+      const av = A.ref.hubSvc.some(h => h.hub_id === hub && h.category_id === c.id);
+      return `<label><input type="checkbox" value="${c.id}"> ${esc(c.icon || '')} ${esc(c.name)}${av ? '' : ' <span class="faint">(unmet)</span>'}</label>`;
+    }).join('');
+  };
+  drawSvcs(); $('w_hub').onchange = drawSvcs;
+  $('w_age').onchange = e => $('w_gwrap').classList.toggle('hidden', e.target.value !== 'Under 18');
+}
+
+/* =====================================================================
+   VISITORS
+   ===================================================================== */
+async function vVisitors() {
+  $('tools').innerHTML = `<input class="i" id="vs" placeholder="Search name or mobile…" style="width:260px"><button class="btn" id="walkin2">+ Walk-in registration</button>`;
+  $('walkin2').onclick = () => walkIn();
+  const run = async () => {
+    const term = $('vs').value.trim().replace(/[,()*%]/g, ' ').trim();
+    let qq = sb.from('visitors').select('id, full_name, mobile, community, age_group, gender, is_minor, created_at, last_visit_at, anonymised_at, first_hub_id, visits(count)')
+      .eq('org_id', A.m.org_id).order('last_visit_at', { ascending: false, nullsFirst: false }).limit(150);
+    if (term) qq = qq.or(`full_name.ilike.*${term}*,mobile.ilike.*${term.replace(/\D/g, '') || term}*`);
+    const rows = await q(qq);
+    $('page').innerHTML = `
+      <div class="note" style="margin-bottom:14px">Personal information is restricted to staff of the Hubs a visitor has attended. ${can(MANAGERS) ? 'Management can correct records and anonymise a visitor on request (POPIA).' : ''}</div>
+      <div class="card" style="padding:0;overflow:auto"><table class="t"><thead><tr><th>Name</th><th>Mobile</th><th>Community</th><th>Age group</th><th>Gender</th><th class="n">Visits</th><th>First seen</th><th>Last visit</th></tr></thead>
+      <tbody>${rows.map(r => `<tr class="click" data-id="${r.id}"><td><b>${esc(r.full_name)}</b> ${r.is_minor ? '<span class="badge minor">U18</span>' : ''}${r.anonymised_at ? '<span class="badge grey">Anonymised</span>' : ''}</td>
+        <td>${esc(r.anonymised_at ? '—' : r.mobile)}</td><td>${esc(r.community || '—')}</td><td>${esc(r.age_group || '—')}</td><td>${esc(r.gender || '—')}</td>
+        <td class="n">${(r.visits && r.visits[0] && r.visits[0].count) || 0}</td><td>${fmtDate(r.created_at)}</td><td>${fmtDate(r.last_visit_at)}</td></tr>`).join('')}</tbody></table>
+      ${rows.length ? '' : '<div class="empty" style="border:0">No visitors found.</div>'}</div>
+      <p class="faint" style="font-size:12.5px">Showing up to 150 most recent visitors${term ? ' matching your search' : ''}.</p>`;
+    document.querySelectorAll('tr.click').forEach(t => t.onclick = () => openVisitor(t.dataset.id));
+  };
+  let tm; $('vs').oninput = () => { clearTimeout(tm); tm = setTimeout(() => run().catch(fail), 300); };
+  await run();
+}
+
+async function openVisitor(id) {
+  const d = drawer('<div class="spin"></div>');
+  try {
+    const vi = await q(sb.from('visitors').select('*').eq('id', id).single());
+    const visits = await q(sb.from('visits').select('id, hub_id, visited_at, ticket_no, status, need_description, visit_services(category_id, status, service_provided, referral_org, programme_id), feedback(rating, improve)').eq('visitor_id', id).order('visited_at', { ascending: false }));
+    const svcs = visits.flatMap(v => v.visit_services || []);
+    const ratings = visits.map(fbOf).filter(f => f && f.rating).map(f => f.rating);
+    d.innerHTML = `
+      <header><div><h2 style="margin:0;font-size:20px">${esc(vi.full_name)}</h2>
+        <div class="muted" style="font-size:13.5px;margin-top:4px">${esc(vi.anonymised_at ? 'Anonymised ' + fmtDate(vi.anonymised_at) : vi.mobile)} · ${esc(vi.community || '')} · ${esc(vi.age_group || '')} · ${esc(vi.gender || '')}</div></div>
+        <button class="x" onclick="closeDrawer()">×</button></header>
+      <div class="body">
+        <div class="kpis" style="margin:0">
+          <div class="kpi"><div class="l">Visits</div><div class="v">${visits.length}</div></div>
+          <div class="kpi"><div class="l">Services received</div><div class="v">${svcs.filter(s => ['completed', 'referred'].includes(s.status)).length}</div></div>
+          <div class="kpi"><div class="l">Programmes</div><div class="v">${uniq(svcs.map(s => s.programme_id).filter(Boolean)).length}</div></div>
+          <div class="kpi"><div class="l">Avg rating</div><div class="v">${ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : '–'}</div></div></div>
+        <div class="card"><h3>Beneficiary journey</h3><div class="sub">Consent recorded ${fmtDT(vi.consent_at)} (${esc(vi.consent_version || '')})${vi.is_minor ? ' · under 18 — guardian consent: ' + (vi.guardian_consent ? 'yes' : 'no') : ''}</div>
+          <div class="timeline">${visits.map(h => `<div class="tl"><div class="d">${fmtDate(h.visited_at)}</div><div>
+            <div style="font-weight:600"><a href="#" data-visit="${h.id}">${esc(nameOf(A.ref.hubs, h.hub_id))} · ticket ${esc(h.ticket_no)}</a> <span class="faint">${esc(VISIT_STATUS[h.status])}</span></div>
+            <div>${(h.visit_services || []).map(s => chip(nameOf(A.ref.cats, s.category_id) + (s.referral_org ? ' → ' + s.referral_org : ''), STATUS[s.status].c)).join('')}</div>
+            ${h.need_description ? `<div class="faint" style="font-size:12.5px">“${esc(h.need_description)}”</div>` : ''}</div></div>`).join('')}</div></div>
+        ${can(MANAGERS) && !vi.anonymised_at ? `<div class="card"><h3>Record management (POPIA)</h3><div class="sub">Correct details, or anonymise when the visitor asks to be removed or the retention period has passed. Anonymising keeps the statistics but removes name, mobile, email, notes and comments. It cannot be undone.</div>
+          <div class="row"><button class="btn sm sec" id="editV">Edit details</button><button class="btn sm danger" id="anonV">Anonymise visitor</button></div></div>` : ''}
+      </div>`;
+    d.querySelectorAll('[data-visit]').forEach(a => a.onclick = e => { e.preventDefault(); openVisit(a.dataset.visit); });
+    if ($('anonV')) $('anonV').onclick = async () => {
+      if (!await confirmDlg('Anonymise visitor?', 'This permanently removes this person\'s name, mobile number, email, notes and free-text comments. Statistics are kept. This cannot be undone.', 'Anonymise')) return;
+      try { await q(sb.rpc('anonymise_visitor', { p_visitor: id })); toast('Visitor anonymised'); openVisitor(id); } catch (e) { fail(e); }
+    };
+    if ($('editV')) $('editV').onclick = () => modal('Edit visitor', `<div class="fld">
+        <label class="lb">Name</label><input class="i" id="e_name" value="${esc(vi.full_name)}">
+        <label class="lb">Mobile</label><input class="i" id="e_mobile" value="${esc(vi.mobile)}">
+        <label class="lb">Email</label><input class="i" id="e_email" value="${esc(vi.email || '')}">
+        <label class="lb">Community</label><input class="i" id="e_comm" value="${esc(vi.community || '')}">
+        <label class="lb">Age group</label><select class="i" id="e_age">${sopts(AGE_GROUPS, vi.age_group, 'Not stated')}</select>
+        <label class="lb">Gender</label><select class="i" id="e_gender">${sopts(GENDERS, vi.gender, 'Not stated')}</select></div>`,
+      { save: async () => {
+        const mob = $('e_mobile').value.replace(/\D/g, '').replace(/^27(?=\d{9}$)/, '0');
+        if (!/^0\d{9}$/.test(mob)) { toast('Mobile must be 10 digits', true); return false; }
+        await q(sb.from('visitors').update({ full_name: $('e_name').value.trim(), mobile: mob, email: $('e_email').value.trim() || null, community: $('e_comm').value.trim() || null,
+          age_group: $('e_age').value || null, gender: $('e_gender').value || null, is_minor: $('e_age').value === 'Under 18' }).eq('id', id));
+        toast('Visitor updated'); openVisitor(id);
+      } });
+  } catch (e) { fail(e); closeDrawer(); }
+}
+
+/* =====================================================================
+   DATA FOR DASHBOARDS & REPORTS
+   ===================================================================== */
+const FACT_CACHE = {};
+async function facts(from, to) {
+  const key = from + '|' + to;
+  if (FACT_CACHE[key] && Date.now() - FACT_CACHE[key].t < 120000) return FACT_CACHE[key].rows;
+  const start = new Date(from + 'T00:00:00+02:00').toISOString(), end = new Date(addDays(to, 1) + 'T00:00:00+02:00').toISOString();
+  const rows = await all(() => sb.from('v_service_facts').select('*').eq('org_id', A.m.org_id).gte('visited_at', start).lt('visited_at', end).order('visited_at'));
+  FACT_CACHE[key] = { t: Date.now(), rows };
+  return rows;
+}
+
+function metrics(rows) {
+  const visits = groupBy(rows, r => r.visit_id);
+  const visitList = Object.values(visits).map(g => g[0]);
+  const byVisitor = groupBy(visitList, r => r.visitor_id);
+  const ratings = visitList.filter(v => v.rating != null).map(v => v.rating);
+  const avail = rows.filter(r => r.is_available);
+  const actioned = avail.filter(r => r.status !== 'awaiting' && r.status !== 'in_progress');
+  return {
+    visits: visitList.length,
+    unique: Object.keys(byVisitor).length,
+    newBen: uniq(visitList.filter(v => v.is_first_visit).map(v => v.visitor_id)).length,
+    repeatVisitors: Object.values(byVisitor).filter(g => g.length > 1 || g.some(v => !v.is_first_visit)).length,
+    returningVisits: visitList.filter(v => !v.is_first_visit).length,
+    requested: rows.length,
+    delivered: rows.filter(r => r.status === 'completed' || r.status === 'referred').length,
+    completed: rows.filter(r => r.status === 'completed').length,
+    outstanding: avail.filter(r => ['awaiting', 'in_progress', 'follow_up'].includes(r.status)).length,
+    referrals: rows.filter(r => r.status === 'referred').length,
+    unmet: rows.filter(r => !r.is_available).length,
+    avgRating: ratings.length ? Math.round(100 * ratings.reduce((a, b) => a + b, 0) / ratings.length) / 100 : null,
+    feedbackN: ratings.length,
+    resolution: pct(actioned.filter(r => r.status === 'completed' || r.status === 'referred').length, actioned.length),
+    communities: uniq(visitList.map(v => v.community).filter(Boolean)).length,
+    hubs: uniq(visitList.map(v => v.hub_id)).length
+  };
+}
+const countBy = (rows, fn, distinctFn) => {
+  const g = groupBy(rows, fn);
+  return Object.entries(g).map(([k, v]) => [k, distinctFn ? uniq(v.map(distinctFn)).length : v.length]).sort((a, b) => b[1] - a[1]);
+};
+const monthsBetween = (from, to) => { const out = []; let d = new Date(from.slice(0, 7) + '-01T12:00:00'); const e = new Date(to.slice(0, 7) + '-01T12:00:00'); while (d <= e) { out.push(d.toISOString().slice(0, 7)); d.setMonth(d.getMonth() + 1); } return out; };
+
+/* ---------- charts (single axis, thin marks, fixed series order) ---------- */
+Chart.defaults.font.family = 'Figtree, system-ui, sans-serif';
+Chart.defaults.font.size = 12;
+Chart.defaults.color = '#5b6b69';
+function chart(canvasId, type, labels, datasets, extra = {}) {
+  const el = $(canvasId); if (!el) return null;
+  const horizontal = extra.horizontal;
+  const c = new Chart(el, {
+    type,
+    data: { labels, datasets: datasets.map((d, i) => { const dt = d.type || type; return Object.assign({
+      backgroundColor: SERIES[i], borderColor: dt === 'line' ? SERIES[i] : '#ffffff',
+      borderWidth: dt === 'line' ? 2 : 0, borderRadius: dt === 'bar' ? 4 : 0, borderSkipped: 'start',
+      maxBarThickness: 26, pointRadius: dt === 'line' ? 3 : 0, pointHoverRadius: 6, pointBackgroundColor: SERIES[i], pointBorderColor: '#ffffff', pointBorderWidth: 2, tension: .25, fill: false
+    }, d); }) },
+    options: Object.assign({
+      responsive: true, maintainAspectRatio: false, indexAxis: horizontal ? 'y' : 'x',
+      interaction: { mode: type === 'line' ? 'index' : 'nearest', intersect: type !== 'line' },
+      plugins: { legend: { display: datasets.length > 1, position: 'top', align: 'start', labels: { boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 3 } },
+                 tooltip: { backgroundColor: '#14201f', padding: 10, cornerRadius: 8, titleFont: { weight: '700' } } },
+      scales: {
+        x: { grid: { display: !!horizontal, color: '#eef1f0' }, border: { display: false }, ticks: { precision: 0 }, stacked: !!extra.stacked, beginAtZero: true },
+        y: { grid: { display: !horizontal, color: '#eef1f0' }, border: { display: false }, ticks: { precision: 0 }, stacked: !!extra.stacked, beginAtZero: true, max: extra.max }
+      }
+    }, extra.options || {})
+  });
+  A.charts.push(c);
+  return c;
+}
+
+/* =====================================================================
+   DASHBOARD (Module 5)
+   ===================================================================== */
+const DF = { from: addDays(today(), -182), to: today(), hub: '', region: '', prog: '', cat: '', gender: '', age: '', vtype: '' };
+async function vDashboard() {
+  const hubs = myHubs();
+  $('page').innerHTML = `
+    <div class="filters" id="dfil">
+      <span class="lbl">From</span><input class="i" type="date" id="f_from" value="${DF.from}">
+      <span class="lbl">To</span><input class="i" type="date" id="f_to" value="${DF.to}">
+      <select class="i" id="f_region">${opts(A.ref.regions, DF.region, 'All regions', r => r.name + (r.province ? ' (' + r.province + ')' : ''))}</select>
+      <select class="i" id="f_hub">${opts(hubs, DF.hub, 'All hubs')}</select>
+      <select class="i" id="f_prog">${opts(A.ref.progs, DF.prog, 'All programmes')}</select>
+      <select class="i" id="f_cat">${opts(A.ref.cats, DF.cat, 'All services')}</select>
+      <select class="i" id="f_gender">${sopts(GENDERS, DF.gender, 'All genders')}</select>
+      <select class="i" id="f_age">${sopts(AGE_GROUPS, DF.age, 'All ages')}</select>
+      <select class="i" id="f_vtype">${opts([{ id: 'first', name: 'First-time visits' }, { id: 'return', name: 'Returning visits' }], DF.vtype, 'All visitors')}</select>
+      <button class="btn sm sec" id="f_reset">Reset</button>
+    </div><div id="dbody"><div class="spin"></div></div>`;
+  const map = { f_from: 'from', f_to: 'to', f_hub: 'hub', f_region: 'region', f_prog: 'prog', f_cat: 'cat', f_gender: 'gender', f_age: 'age', f_vtype: 'vtype' };
+  Object.keys(map).forEach(id => $(id).onchange = e => { DF[map[id]] = e.target.value; drawDashboard().catch(fail); });
+  $('f_reset').onclick = () => { Object.assign(DF, { from: addDays(today(), -182), to: today(), hub: '', region: '', prog: '', cat: '', gender: '', age: '', vtype: '' }); vDashboard().catch(fail); };
+  await drawDashboard();
+}
+
+function applyFilters(rows, F) {
+  const hubIds = myHubs().map(h => h.id);
+  return rows.filter(r => hubIds.includes(r.hub_id)
+    && (!F.hub || r.hub_id === F.hub) && (!F.region || r.region_id === F.region)
+    && (!F.prog || r.programme_id === F.prog) && (!F.cat || r.category_id === F.cat)
+    && (!F.gender || r.gender === F.gender) && (!F.age || r.age_group === F.age)
+    && (!F.vtype || (F.vtype === 'first' ? r.is_first_visit : !r.is_first_visit)));
+}
+
+async function drawDashboard() {
+  killCharts();
+  const body = $('dbody'); body.innerHTML = '<div class="spin"></div>';
+  const rows = applyFilters(await facts(DF.from, DF.to), DF);
+  const M = metrics(rows);
+  const visitRows = Object.values(groupBy(rows, r => r.visit_id)).map(g => g[0]);
+  const months = monthsBetween(DF.from, DF.to);
+  const byMonth = groupBy(visitRows, r => r.visit_date.slice(0, 7));
+  const cats = A.ref.cats;
+  const reqByCat = cats.map(c => rows.filter(r => r.category_id === c.id).length);
+  const delByCat = cats.map(c => rows.filter(r => r.category_id === c.id && (r.status === 'completed' || r.status === 'referred')).length);
+  const statusCounts = Object.keys(STATUS).map(k => rows.filter(r => r.status === k).length);
+  const hubsShown = myHubs().filter(h => !DF.hub || h.id === DF.hub);
+  const comm = countBy(visitRows, r => r.community || 'Not stated', r => r.visitor_id).slice(0, 10);
+  const ageCounts = AGE_GROUPS.map(a => uniq(visitRows.filter(r => r.age_group === a).map(r => r.visitor_id)).length);
+  const genCounts = GENDERS.map(g => uniq(visitRows.filter(r => r.gender === g).map(r => r.visitor_id)).length);
+  const unmet = countBy(rows.filter(r => !r.is_available), r => r.category_name);
+  const kpi = (l, v, h) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${h ? `<div class="h">${h}</div>` : ''}</div>`;
+  body.innerHTML = `
+    <div class="kpis">
+      ${kpi('Total visits', fmtN(M.visits), 'All Hub visits in period')}
+      ${kpi('Unique beneficiaries', fmtN(M.unique), fmtN(M.newBen) + ' new to the Hubs')}
+      ${kpi('Repeat visitors', fmtN(M.repeatVisitors), fmtPct(pct(M.repeatVisitors, M.unique)) + ' of beneficiaries')}
+      ${kpi('Services requested', fmtN(M.requested), fmtN(M.unmet) + ' not offered (unmet)')}
+      ${kpi('Services delivered', fmtN(M.delivered), 'Completed or referred')}
+      ${kpi('Outstanding requests', fmtN(M.outstanding), 'Waiting, in progress or follow-up')}
+      ${kpi('Referrals', fmtN(M.referrals), 'To external organisations')}
+      ${kpi('Visitor satisfaction', M.avgRating ? M.avgRating.toFixed(2) + '/5' : '–', fmtN(M.feedbackN) + ' feedback responses')}
+      ${kpi('Service resolution', fmtPct(M.resolution), 'Of actioned requests')}
+      ${kpi('Community reach', fmtN(M.communities), 'Communities · ' + M.hubs + ' hubs')}
+    </div>
+    <div class="grid g2">
+      <div class="card"><h3>Visits and unique beneficiaries per month</h3><div class="sub">Each bar counts visits; the line counts different people</div><div class="chartbox"><canvas id="c1"></canvas></div></div>
+      <div class="card"><h3>Services requested vs delivered</h3><div class="sub">By service category</div><div class="chartbox"><canvas id="c2"></canvas></div></div>
+      <div class="card"><h3>Hub comparison</h3><div class="sub">Visits per Hub</div><div class="chartbox"><canvas id="c3"></canvas></div>
+        <table class="t" style="margin-top:12px"><thead><tr><th>Hub</th><th class="n">Visits</th><th class="n">Beneficiaries</th><th class="n">Resolution</th><th class="n">Rating</th></tr></thead><tbody>
+        ${hubsShown.map(h => { const m = metrics(rows.filter(r => r.hub_id === h.id)); return `<tr><td>${esc(h.name)}</td><td class="n">${fmtN(m.visits)}</td><td class="n">${fmtN(m.unique)}</td><td class="n">${fmtPct(m.resolution)}</td><td class="n">${m.avgRating ? m.avgRating.toFixed(2) : '–'}</td></tr>`; }).join('')}</tbody></table></div>
+      <div class="card"><h3>Service status</h3><div class="sub">Where every requested service stands now</div><div class="chartbox"><canvas id="c4"></canvas></div></div>
+      <div class="card"><h3>Top communities reached</h3><div class="sub">Unique beneficiaries by home community</div><div class="chartbox tall"><canvas id="c5"></canvas></div></div>
+      <div class="card"><h3>Who we are reaching</h3><div class="sub">Unique beneficiaries by age group and gender</div>
+        <div class="grid g2" style="gap:12px"><div class="chartbox"><canvas id="c6"></canvas></div><div class="chartbox"><canvas id="c7"></canvas></div></div></div>
+      <div class="card" style="grid-column:1/-1"><h3>Unmet community needs</h3><div class="sub">Services visitors asked for that their Hub does not offer — evidence for new programmes and funding applications</div>
+        ${unmet.length ? `<div class="chartbox" style="height:${Math.max(140, unmet.length * 40)}px"><canvas id="c8"></canvas></div>` : '<div class="faint">No unmet needs recorded for this selection.</div>'}</div>
+    </div>`;
+  chart('c1', 'bar', months.map(monthLabel), [
+    { label: 'Visits', data: months.map(m => (byMonth[m] || []).length) },
+    { label: 'Unique beneficiaries', type: 'line', data: months.map(m => uniq((byMonth[m] || []).map(r => r.visitor_id)).length) }]);
+  chart('c2', 'bar', cats.map(c => c.name), [{ label: 'Requested', data: reqByCat }, { label: 'Delivered', data: delByCat }], { horizontal: true });
+  chart('c3', 'bar', hubsShown.map(h => h.name.replace(' Community Hub', '')), [{ label: 'Visits', data: hubsShown.map(h => uniq(rows.filter(r => r.hub_id === h.id).map(r => r.visit_id)).length) }]);
+  const c4 = chart('c4', 'bar', Object.values(STATUS).map(s => s.label), [{ label: 'Services', data: statusCounts, backgroundColor: ['#fab219', '#2a78d6', '#0ca30c', '#6250d6', '#ec835a', '#d03b3b'] }], { horizontal: true });
+  chart('c5', 'bar', comm.map(x => x[0]), [{ label: 'Beneficiaries', data: comm.map(x => x[1]) }], { horizontal: true });
+  chart('c6', 'bar', AGE_GROUPS, [{ label: 'Beneficiaries', data: ageCounts }]);
+  chart('c7', 'bar', GENDERS, [{ label: 'Beneficiaries', data: genCounts }]);
+  if (unmet.length) chart('c8', 'bar', unmet.map(x => x[0]), [{ label: 'Requests not offered', data: unmet.map(x => x[1]), backgroundColor: '#eb6834' }], { horizontal: true });
+}
+
+/* =====================================================================
+   REPORT ENGINE — shared by Reports (Module 8) and Donor Impact (Module 6)
+   A report = { title, subtitle, period, summary[], kpis[[label,value]], chart{type,labels,datasets,horizontal}, tables[{title, cols, rows}] }
+   ===================================================================== */
+function renderReport(el, rep) {
+  killCharts();
+  el.innerHTML = `<div class="report">
+    <div class="row" style="align-items:flex-start"><div style="flex:1"><h2>${esc(rep.title)}</h2><div class="period">${esc(rep.subtitle || '')}${rep.subtitle ? ' · ' : ''}${esc(rep.period)}</div></div>
+      <button class="btn sec" id="xpdf">⬇ PDF</button><button class="btn sec" id="xxls">⬇ Excel</button></div>
+    ${rep.kpis && rep.kpis.length ? `<div class="kpis">${rep.kpis.map(([l, v]) => `<div class="kpi"><div class="l">${esc(l)}</div><div class="v" style="font-size:22px">${esc(v)}</div></div>`).join('')}</div>` : ''}
+    ${rep.summary && rep.summary.length ? `<div class="summary">${rep.summary.map(p => `<p>${esc(p)}</p>`).join('')}</div>` : ''}
+    ${rep.chart ? `<h4>${esc(rep.chart.title || '')}</h4><div class="chartbox" style="height:${rep.chart.height || 280}px"><canvas id="repchart"></canvas></div>` : ''}
+    ${(rep.tables || []).map(t => `<h4>${esc(t.title)}</h4><div style="overflow:auto"><table class="t"><thead><tr>${t.cols.map((c, i) => `<th class="${i && t.num !== false ? 'n' : ''}">${esc(c)}</th>`).join('')}</tr></thead>
+      <tbody>${t.rows.map(r => `<tr>${r.map((v, i) => `<td class="${i && t.num !== false ? 'n' : ''}">${esc(v)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${t.cols.length}" class="faint">No data for this selection.</td></tr>`}</tbody></table></div>`).join('')}
+    ${rep.footnote ? `<div class="note" style="margin-top:18px">${esc(rep.footnote)}</div>` : ''}
+  </div>`;
+  if (rep.chart) chart('repchart', rep.chart.type || 'bar', rep.chart.labels, rep.chart.datasets, { horizontal: rep.chart.horizontal });
+  $('xpdf').onclick = () => exportPDF(rep);
+  $('xxls').onclick = () => exportXLSX(rep);
+}
+
+function exportPDF(rep) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth(), M = 40;
+  doc.setFillColor(15, 118, 110); doc.rect(0, 0, W, 64, 'F');
+  doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.text(A.ref.org.name, M, 28);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(CFG.appName + ' · generated ' + fmtDT(new Date()), M, 46);
+  let y = 96;
+  doc.setTextColor(20, 32, 31); doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text(rep.title, M, y); y += 18;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(91, 107, 105); doc.text([rep.subtitle, rep.period].filter(Boolean).join(' · '), M, y); y += 20;
+  if (rep.kpis && rep.kpis.length) {
+    doc.autoTable({ startY: y, margin: { left: M, right: M }, theme: 'plain', styles: { fontSize: 9, cellPadding: 5 },
+      body: chunk(rep.kpis, 4).map(row => row.map(([l, v]) => ({ content: v + '\n' + l, styles: { fontStyle: 'bold' } }))),
+      didParseCell: d => { d.cell.styles.fillColor = [246, 248, 247]; d.cell.styles.lineColor = [255, 255, 255]; d.cell.styles.lineWidth = 3; } });
+    y = doc.lastAutoTable.finalY + 14;
+  }
+  doc.setTextColor(20, 32, 31); doc.setFontSize(10);
+  (rep.summary || []).forEach(p => { const lines = doc.splitTextToSize(p, W - 2 * M); if (y + lines.length * 13 > 790) { doc.addPage(); y = 50; } doc.text(lines, M, y); y += lines.length * 13 + 6; });
+  const cv = $('repchart');
+  if (cv) {
+    const h = (W - 2 * M) * cv.height / cv.width;
+    if (y + h > 790) { doc.addPage(); y = 50; }
+    doc.setFont('helvetica', 'bold'); doc.text(rep.chart.title || '', M, y + 4); doc.setFont('helvetica', 'normal');
+    doc.addImage(cv.toDataURL('image/png', 1), 'PNG', M, y + 12, W - 2 * M, h); y += h + 26;
+  }
+  (rep.tables || []).forEach(t => {
+    if (y > 740) { doc.addPage(); y = 50; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.text(t.title, M, y); doc.setFont('helvetica', 'normal');
+    doc.autoTable({ startY: y + 8, margin: { left: M, right: M }, head: [t.cols], body: t.rows.length ? t.rows.map(r => r.map(String)) : [['No data']],
+      styles: { fontSize: 8.5, cellPadding: 4 }, headStyles: { fillColor: [20, 32, 31] }, alternateRowStyles: { fillColor: [246, 248, 247] } });
+    y = doc.lastAutoTable.finalY + 22;
+  });
+  if (rep.footnote) { if (y > 760) { doc.addPage(); y = 50; } doc.setFontSize(8.5); doc.setTextColor(91, 107, 105); doc.text(doc.splitTextToSize(rep.footnote, W - 2 * M), M, y); }
+  const pages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(138, 152, 150); doc.text(`Page ${i} of ${pages} · Contains aggregated data only — no personal information`, M, 822); }
+  doc.save(fileName(rep, 'pdf'));
+}
+const chunk = (arr, n) => arr.reduce((acc, x, i) => (i % n ? acc[acc.length - 1].push(x) : acc.push([x]), acc), []);
+const fileName = (rep, ext) => (rep.title + ' ' + rep.period).replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_') + '.' + ext;
+
+function exportXLSX(rep) {
+  const wb = XLSX.utils.book_new();
+  const summary = [[rep.title], [A.ref.org.name], [[rep.subtitle, rep.period].filter(Boolean).join(' · ')], ['Generated', fmtDT(new Date())], []];
+  (rep.kpis || []).forEach(([l, v]) => summary.push([l, v]));
+  if (rep.summary && rep.summary.length) { summary.push([]); rep.summary.forEach(p => summary.push([p])); }
+  if (rep.footnote) { summary.push([]); summary.push([rep.footnote]); }
+  const ws = XLSX.utils.aoa_to_sheet(summary); ws['!cols'] = [{ wch: 40 }, { wch: 22 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'Summary');
+  (rep.tables || []).forEach((t, i) => {
+    const s = XLSX.utils.aoa_to_sheet([t.cols, ...t.rows.map(r => r.map(v => (typeof v === 'string' && /^-?\d[\d\s\u00a0\u202f]*(\.\d+)?$/.test(v)) ? Number(v.replace(/[\s\u00a0\u202f]/g, '')) : v))]);
+    s['!cols'] = t.cols.map((c, j) => ({ wch: j ? 16 : 34 }));
+    XLSX.utils.book_append_sheet(wb, s, (t.sheet || t.title).replace(/[\\/?*[\]:]/g, '').slice(0, 31) || ('Table ' + (i + 1)));
+  });
+  XLSX.writeFile(wb, fileName(rep, 'xlsx'));
+}
+
+/* =====================================================================
+   DONOR IMPACT (Module 6)
+   ===================================================================== */
+const DD = { donor: '', from: '', to: today() };
+async function vDonor() {
+  const donors = A.ref.donors.filter(d => d.active || role() === 'donor_viewer');
+  if (role() === 'donor_viewer') DD.donor = A.m.donor_id;
+  if (!DD.donor && donors.length) DD.donor = donors[0].id;
+  if (!DD.from) { const st = A.ref.allocs.filter(a => a.donor_id === DD.donor).map(a => a.start_date).sort()[0]; DD.from = st && st < today() ? st : addDays(today(), -365); }
+  if (!donors.length) { $('page').innerHTML = '<div class="empty">No donors set up yet. Add donors and link them to programmes under Administration → Donors & funding.</div>'; return; }
+  $('page').innerHTML = `
+    <div class="filters">
+      ${role() === 'donor_viewer' ? `<b>${esc(nameOf(donors, DD.donor))}</b>` : `<span class="lbl">Donor</span><select class="i" id="d_donor">${opts(donors, DD.donor)}</select>`}
+      <span class="lbl">From</span><input class="i" type="date" id="d_from" value="${DD.from}">
+      <span class="lbl">To</span><input class="i" type="date" id="d_to" value="${DD.to}">
+      <span class="faint" style="font-size:12.5px">Only services linked to this donor's funded programmes, Hubs and funding dates are counted.</span>
+    </div><div id="dout"><div class="spin"></div></div>`;
+  if ($('d_donor')) $('d_donor').onchange = e => { DD.donor = e.target.value; DD.from = ''; vDonor().catch(fail); };
+  $('d_from').onchange = e => { DD.from = e.target.value; drawDonor().catch(fail); };
+  $('d_to').onchange = e => { DD.to = e.target.value; drawDonor().catch(fail); };
+  await drawDonor();
+}
+
+async function drawDonor() {
+  const r = await q(sb.rpc('donor_impact', { p_org: A.m.org_id, p_donor: DD.donor, p_from: DD.from, p_to: DD.to }));
+  $('dout') && renderReport($('dout'), donorReport(r));
+}
+
+function donorReport(r) {
+  const T = r.totals || {};
+  const months = (r.by_month || []);
+  const perBen = T.unique_beneficiaries ? r.total_funding / T.unique_beneficiaries : null;
+  const progLines = (r.by_programme || []).map(p => `${p.programme}: ${fmtN(p.unique)} people reached through ${fmtN(p.interactions)} service interactions (${fmtN(p.completed)} completed, ${fmtN(p.referred)} referred on)${p.avg_rating ? ', rated ' + Number(p.avg_rating).toFixed(1) + '/5' : ''}.`);
+  return {
+    title: 'Donor Impact Report', subtitle: r.donor ? r.donor.name : '', period: fmtDate(r.period.from) + ' – ' + fmtDate(r.period.to),
+    kpis: [['Funding allocated', fmtR(r.total_funding)], ['Unique beneficiaries', fmtN(T.unique_beneficiaries)], ['Service interactions', fmtN(T.interactions)],
+           ['New beneficiaries', fmtN(T.new_beneficiaries)], ['Services completed', fmtN(T.completed)], ['Referrals', fmtN(T.referred)],
+           ['Requests resolved', fmtPct(T.resolved_pct)], ['Avg satisfaction', T.avg_rating ? Number(T.avg_rating).toFixed(2) + '/5' : '–'],
+           ['Hubs reached', fmtN(T.hubs_reached)], ['Communities reached', fmtN(T.communities_reached)]],
+    summary: [
+      `${r.donor ? r.donor.name : 'This donor'} contributed ${fmtR(r.total_funding)} to ${A.ref.org.name}. Between ${fmtDate(r.period.from)} and ${fmtDate(r.period.to)}, the funded programmes reached ${fmtN(T.unique_beneficiaries)} unique beneficiaries across ${fmtN(T.hubs_reached)} Hubs and ${fmtN(T.communities_reached)} communities, through ${fmtN(T.interactions)} recorded service interactions.`,
+      ...progLines,
+      `${fmtPct(T.resolved_pct)} of actioned requests were resolved, either directly or by referral, and beneficiaries gave an average satisfaction rating of ${T.avg_rating ? Number(T.avg_rating).toFixed(1) : '–'}/5 across ${fmtN(T.feedback_count)} feedback responses.` +
+        (perBen ? ` This equates to ${fmtR(perBen)} of funding per beneficiary reached so far.` : '')
+    ],
+    chart: { title: 'People reached per month', labels: months.map(m => monthLabel(m.label)), datasets: [{ label: 'Service interactions', data: months.map(m => m.value) }, { label: 'Unique beneficiaries', type: 'line', data: months.map(m => m.unique) }] },
+    tables: [
+      { title: 'Funding allocations', sheet: 'Allocations', cols: ['Programme', 'Hub', 'Amount', 'From', 'To'], num: false, rows: (r.allocations || []).map(a => [a.programme, a.hub, fmtR(a.amount), fmtDate(a.start), fmtDate(a.end)]) },
+      { title: 'Programme performance', sheet: 'Programmes', cols: ['Programme', 'Funding', 'Unique beneficiaries', 'Interactions', 'Completed', 'Referred', 'Avg rating', 'Funding per beneficiary'],
+        rows: (r.by_programme || []).map(p => [p.programme, fmtR(p.funding), fmtN(p.unique), fmtN(p.interactions), fmtN(p.completed), fmtN(p.referred), p.avg_rating ? Number(p.avg_rating).toFixed(2) : '–', p.unique ? fmtR(p.funding / p.unique) : '–']) },
+      { title: 'Reach by Hub', sheet: 'Hubs', cols: ['Hub', 'Interactions', 'Unique beneficiaries'], rows: (r.by_hub || []).map(x => [x.label, fmtN(x.value), fmtN(x.unique)]) },
+      { title: 'Services delivered by category', sheet: 'Categories', cols: ['Service category', 'Interactions'], rows: (r.by_category || []).map(x => [x.label, fmtN(x.value)]) },
+      { title: 'Beneficiaries by age group', sheet: 'Age', cols: ['Age group', 'Beneficiaries'], rows: (r.by_age || []).map(x => [x.label, fmtN(x.value)]) },
+      { title: 'Beneficiaries by gender', sheet: 'Gender', cols: ['Gender', 'Beneficiaries'], rows: (r.by_gender || []).map(x => [x.label, fmtN(x.value)]) },
+      { title: 'Top communities', sheet: 'Communities', cols: ['Community', 'Beneficiaries'], rows: (r.by_community || []).map(x => [x.label, fmtN(x.value)]) }
+    ],
+    footnote: 'These figures measure outputs (reach and services delivered) and early outcomes (resolution and satisfaction). They are not a financial or social return on investment (SROI) calculation, which needs additional outcome verification and an agreed methodology. No personal information about beneficiaries is included in this report.'
+  };
+}
+
+/* =====================================================================
+   REPORTS & EXPORT (Module 8)
+   ===================================================================== */
+const REPORTS = [
+  ['daily', 'Daily Hub Visitor Report'], ['monthly', 'Monthly Hub Performance Report'], ['quarterly', 'Quarterly Programme Performance Report'],
+  ['donor', 'Donor-Specific Impact Report'], ['demographic', 'Community Demographic Report'], ['demand', 'Service Demand Analysis'],
+  ['satisfaction', 'Visitor Satisfaction Report'], ['reach', 'Programme Reach and Participation Report'], ['referral', 'Referral and Follow-up Report'],
+  ['unmet', 'Unmet Community Needs Report'], ['ytd', 'Year-to-Date Organisational Impact Report']
+];
+const RS = { type: 'monthly', hub: '', day: today(), month: today().slice(0, 7), quarter: '', from: addDays(today(), -90), to: today(), donor: '' };
+function quarters() { const out = []; const d = new Date(); for (let i = 0; i < 6; i++) { const y = d.getFullYear(), qn = Math.floor(d.getMonth() / 3) + 1; out.push({ id: `${y}-Q${qn}`, name: `Q${qn} ${y} (${['Jan–Mar', 'Apr–Jun', 'Jul–Sep', 'Oct–Dec'][qn - 1]})` }); d.setMonth(d.getMonth() - 3); } return out; }
+function periodFor(t) {
+  if (t === 'daily') return [RS.day, RS.day];
+  if (t === 'monthly') { const [y, m] = RS.month.split('-').map(Number); return [RS.month + '-01', new Date(y, m, 0).toLocaleDateString('en-CA')]; }
+  if (t === 'quarterly') { const [y, qq] = (RS.quarter || quarters()[0].id).split('-Q').map(Number); return [`${y}-${String(qq * 3 - 2).padStart(2, '0')}-01`, new Date(y, qq * 3, 0).toLocaleDateString('en-CA')]; }
+  if (t === 'ytd') return [today().slice(0, 4) + '-01-01', today()];
+  return [RS.from, RS.to];
+}
+
+async function vReports() {
+  const hubs = myHubs();
+  const t = RS.type;
+  if (!RS.quarter) RS.quarter = quarters()[0].id;
+  if (!RS.donor && A.ref.donors.length) RS.donor = A.ref.donors[0].id;
+  $('page').innerHTML = `
+    <div class="filters">
+      <span class="lbl">Report</span><select class="i" id="r_type">${opts(REPORTS.map(([id, name]) => ({ id, name })), t)}</select>
+      ${t === 'donor' ? `<select class="i" id="r_donor">${opts(A.ref.donors, RS.donor)}</select>` : `<select class="i" id="r_hub">${opts(hubs, RS.hub, t === 'daily' ? null : 'All hubs')}</select>`}
+      ${t === 'daily' ? `<input class="i" type="date" id="r_day" value="${RS.day}">` : ''}
+      ${t === 'monthly' ? `<input class="i" type="month" id="r_month" value="${RS.month}">` : ''}
+      ${t === 'quarterly' ? `<select class="i" id="r_quarter">${opts(quarters(), RS.quarter)}</select>` : ''}
+      ${['daily', 'monthly', 'quarterly', 'ytd'].includes(t) ? '' : `<span class="lbl">From</span><input class="i" type="date" id="r_from" value="${RS.from}"><span class="lbl">To</span><input class="i" type="date" id="r_to" value="${RS.to}">`}
+    </div><div id="rout"><div class="spin"></div></div>`;
+  if (t === 'daily' && !RS.hub && hubs[0]) RS.hub = hubs[0].id;
+  const bindF = (id, k, redraw) => { if ($(id)) $(id).onchange = e => { RS[k] = e.target.value; redraw ? vReports().catch(fail) : drawReport().catch(fail); }; };
+  bindF('r_type', 'type', true); bindF('r_hub', 'hub'); bindF('r_day', 'day'); bindF('r_month', 'month'); bindF('r_quarter', 'quarter'); bindF('r_from', 'from'); bindF('r_to', 'to'); bindF('r_donor', 'donor');
+  await drawReport();
+}
+
+async function drawReport() {
+  const out = $('rout'); out.innerHTML = '<div class="spin"></div>';
+  const t = RS.type, [from, to] = periodFor(t);
+  if (t === 'daily' && !RS.hub) { out.innerHTML = '<div class="empty">Choose a Hub for the daily report.</div>'; return; }
+  if (t === 'donor') { if (!RS.donor) { out.innerHTML = '<div class="empty">No donors set up yet.</div>'; return; } const r = await q(sb.rpc('donor_impact', { p_org: A.m.org_id, p_donor: RS.donor, p_from: from, p_to: to })); return renderReport(out, donorReport(r)); }
+  const F = { hub: RS.hub };
+  const rows = applyFilters(await facts(from, to), F);
+  const M = metrics(rows);
+  const hubName = RS.hub ? nameOf(A.ref.hubs, RS.hub) : 'All hubs';
+  const period = from === to ? fmtDate(from) : fmtDate(from) + ' – ' + fmtDate(to);
+  const visits = Object.values(groupBy(rows, r => r.visit_id)).map(g => g[0]);
+  const delivered = r => r.status === 'completed' || r.status === 'referred';
+  const stdK = [['Visits', fmtN(M.visits)], ['Unique beneficiaries', fmtN(M.unique)], ['New beneficiaries', fmtN(M.newBen)], ['Services delivered', fmtN(M.delivered)],
+                ['Outstanding', fmtN(M.outstanding)], ['Referrals', fmtN(M.referrals)], ['Resolution', fmtPct(M.resolution)], ['Satisfaction', M.avgRating ? M.avgRating.toFixed(2) + '/5' : '–']];
+  const catTable = () => A.ref.cats.map(c => { const rr = rows.filter(r => r.category_id === c.id); return [c.name, fmtN(rr.length), fmtN(rr.filter(delivered).length), fmtN(rr.filter(r => r.status === 'referred').length), fmtN(rr.filter(r => !r.is_available).length), fmtN(uniq(rr.map(r => r.visitor_id)).length)]; }).filter(r => r[1] !== '0');
+  let rep;
+
+  if (t === 'daily') {
+    const day = await q(sb.from('visits').select('ticket_no, visited_at, is_first_visit, status, source, visitor:visitors(community, age_group, gender), visit_services(category_id, status, referral_org), feedback(rating)')
+      .eq('hub_id', RS.hub).gte('visited_at', new Date(from + 'T00:00:00+02:00').toISOString()).lt('visited_at', new Date(addDays(from, 1) + 'T00:00:00+02:00').toISOString()).order('visited_at'));
+    const hours = Array.from({ length: 11 }, (_, i) => i + 7);
+    rep = { title: 'Daily Hub Visitor Report', subtitle: hubName, period, kpis: stdK.slice(0, 6),
+      summary: [`${hubName} received ${fmtN(day.length)} visits on ${fmtDate(from)}, of which ${fmtN(day.filter(v => v.is_first_visit).length)} were first-time visitors. ${fmtN(day.filter(v => v.status === 'closed').length)} visits were fully closed by the end of the day and ${fmtN(day.filter(v => v.status !== 'closed').length)} remain open.`],
+      chart: { title: 'Arrivals by hour', labels: hours.map(h => h + ':00'), datasets: [{ label: 'Arrivals', data: hours.map(h => day.filter(v => Number(new Date(v.visited_at).toLocaleString('en-ZA', { hour: '2-digit', hour12: false, timeZone: tz })) === h).length) }] },
+      tables: [{ title: 'Visits', sheet: 'Visits', num: false, cols: ['Ticket', 'Time', 'Visitor type', 'Community', 'Age group', 'Services', 'Visit status', 'Rating'],
+        rows: day.map(v => [v.ticket_no, fmtTime(v.visited_at), v.is_first_visit ? 'First visit' : 'Returning', (v.visitor || {}).community || '', (v.visitor || {}).age_group || '',
+          (v.visit_services || []).map(s => nameOf(A.ref.cats, s.category_id) + ' (' + STATUS[s.status].label + ')').join('; '), VISIT_STATUS[v.status], (fbOf(v) || {}).rating || '']) }],
+      footnote: 'Visitor names and contact details are deliberately excluded from this report.' };
+  } else if (t === 'monthly' || t === 'ytd') {
+    const hubs = myHubs().filter(h => !RS.hub || h.id === RS.hub);
+    const months = monthsBetween(from, to); const bm = groupBy(visits, r => r.visit_date.slice(0, 7));
+    rep = { title: t === 'ytd' ? 'Year-to-Date Organisational Impact Report' : 'Monthly Hub Performance Report', subtitle: hubName, period, kpis: stdK,
+      summary: [`During this period ${A.ref.org.name} recorded ${fmtN(M.visits)} visits from ${fmtN(M.unique)} unique beneficiaries (${fmtN(M.newBen)} of them new) across ${fmtN(M.hubs)} Hubs and ${fmtN(M.communities)} communities.`,
+        `${fmtN(M.delivered)} services were delivered, including ${fmtN(M.referrals)} referrals to external organisations. ${fmtPct(M.resolution)} of actioned requests were resolved and visitors rated the service ${M.avgRating ? M.avgRating.toFixed(1) : '–'}/5 on average. ${fmtN(M.outstanding)} requests are still outstanding.`,
+        M.unmet ? `Visitors also asked for ${fmtN(M.unmet)} services that their Hub does not currently offer — see the Unmet Community Needs report.` : ''].filter(Boolean),
+      chart: t === 'ytd' ? { title: 'Visits and beneficiaries per month', labels: months.map(monthLabel), datasets: [{ label: 'Visits', data: months.map(m => (bm[m] || []).length) }, { label: 'Unique beneficiaries', type: 'line', data: months.map(m => uniq((bm[m] || []).map(r => r.visitor_id)).length) }] }
+        : { title: 'Visits by Hub', labels: hubs.map(h => h.name.replace(' Community Hub', '')), datasets: [{ label: 'Visits', data: hubs.map(h => visits.filter(v => v.hub_id === h.id).length) }] },
+      tables: [{ title: 'Hub performance', sheet: 'Hubs', cols: ['Hub', 'Visits', 'Unique', 'New', 'Delivered', 'Referrals', 'Outstanding', 'Resolution', 'Rating'],
+          rows: hubs.map(h => { const m = metrics(rows.filter(r => r.hub_id === h.id)); return [h.name, fmtN(m.visits), fmtN(m.unique), fmtN(m.newBen), fmtN(m.delivered), fmtN(m.referrals), fmtN(m.outstanding), fmtPct(m.resolution), m.avgRating ? m.avgRating.toFixed(2) : '–']; }) },
+        { title: 'Services by category', sheet: 'Services', cols: ['Category', 'Requested', 'Delivered', 'Referred', 'Unmet', 'Beneficiaries'], rows: catTable() }] };
+    if (t === 'ytd') rep.tables.unshift({ title: 'Monthly trend', sheet: 'Monthly', cols: ['Month', 'Visits', 'Unique beneficiaries'], rows: months.map(m => [monthLabel(m), fmtN((bm[m] || []).length), fmtN(uniq((bm[m] || []).map(r => r.visitor_id)).length)]) });
+  } else if (t === 'quarterly' || t === 'reach') {
+    const progs = A.ref.progs;
+    const pr = progs.map(p => { const rr = rows.filter(r => r.programme_id === p.id); const m = metrics(rr); const perPerson = groupBy(rr, r => r.visitor_id); return { p, rr, m, repeat: Object.values(perPerson).filter(g => uniq(g.map(x => x.visit_id)).length > 1).length }; }).filter(x => x.rr.length);
+    rep = { title: t === 'quarterly' ? 'Quarterly Programme Performance Report' : 'Programme Reach and Participation Report', subtitle: hubName, period,
+      kpis: [['Programmes active', fmtN(pr.length)], ['Participants', fmtN(uniq(rows.filter(r => r.programme_id).map(r => r.visitor_id)).length)], ['Interactions', fmtN(rows.filter(r => r.programme_id).length)], ['Resolution', fmtPct(M.resolution)], ['Satisfaction', M.avgRating ? M.avgRating.toFixed(2) + '/5' : '–']],
+      summary: pr.map(x => `${x.p.name} reached ${fmtN(x.m.unique)} participants through ${fmtN(x.rr.length)} interactions; ${fmtN(x.repeat)} participants engaged more than once. Resolution ${fmtPct(x.m.resolution)}, satisfaction ${x.m.avgRating ? x.m.avgRating.toFixed(1) : '–'}/5.`),
+      chart: { title: 'Participants per programme', horizontal: true, height: Math.max(180, pr.length * 42), labels: pr.map(x => x.p.name), datasets: [{ label: 'Unique participants', data: pr.map(x => x.m.unique) }] },
+      tables: [{ title: 'Programme performance', sheet: 'Programmes', cols: ['Programme', 'Participants', 'Repeat participants', 'Interactions', 'Delivered', 'Referred', 'Outstanding', 'Resolution', 'Rating'],
+        rows: pr.map(x => [x.p.name, fmtN(x.m.unique), fmtN(x.repeat), fmtN(x.rr.length), fmtN(x.m.delivered), fmtN(x.m.referrals), fmtN(x.m.outstanding), fmtPct(x.m.resolution), x.m.avgRating ? x.m.avgRating.toFixed(2) : '–']) }] };
+    if (t === 'reach') rep.tables.push({ title: 'Participants by age group and programme', sheet: 'Age x Programme', cols: ['Programme', ...AGE_GROUPS], rows: pr.map(x => [x.p.name, ...AGE_GROUPS.map(a => fmtN(uniq(x.rr.filter(r => r.age_group === a).map(r => r.visitor_id)).length))]) });
+  } else if (t === 'demographic') {
+    const people = Object.values(groupBy(visits, v => v.visitor_id)).map(g => g[0]);
+    const comm = countBy(people, p => p.community || 'Not stated');
+    rep = { title: 'Community Demographic Report', subtitle: hubName, period, kpis: [['Unique beneficiaries', fmtN(people.length)], ['Communities', fmtN(M.communities)], ['Female', fmtPct(pct(people.filter(p => p.gender === 'Female').length, people.length))], ['Youth (18–34)', fmtPct(pct(people.filter(p => ['18-24', '25-34'].includes(p.age_group)).length, people.length))], ['Under 18', fmtN(people.filter(p => p.age_group === 'Under 18').length)]],
+      summary: [`${fmtN(people.length)} different people from ${fmtN(M.communities)} communities used the Hubs in this period. The largest groups were from ${comm.slice(0, 3).map(c => c[0] + ' (' + c[1] + ')').join(', ')}.`],
+      chart: { title: 'Beneficiaries by age group', labels: AGE_GROUPS, datasets: [{ label: 'Beneficiaries', data: AGE_GROUPS.map(a => people.filter(p => p.age_group === a).length) }] },
+      tables: [{ title: 'By community', sheet: 'Community', cols: ['Community', 'Beneficiaries', 'Share'], rows: comm.map(([k, n]) => [k, fmtN(n), fmtPct(pct(n, people.length))]) },
+        { title: 'By gender', sheet: 'Gender', cols: ['Gender', 'Beneficiaries', 'Share'], rows: countBy(people, p => p.gender || 'Not stated').map(([k, n]) => [k, fmtN(n), fmtPct(pct(n, people.length))]) },
+        { title: 'By age group', sheet: 'Age', cols: ['Age group', 'Beneficiaries', 'Share'], rows: AGE_GROUPS.map(a => { const n = people.filter(p => p.age_group === a).length; return [a, fmtN(n), fmtPct(pct(n, people.length))]; }) },
+        { title: 'Age group by gender', sheet: 'Age x Gender', cols: ['Age group', ...GENDERS], rows: AGE_GROUPS.map(a => [a, ...GENDERS.map(g => fmtN(people.filter(p => p.age_group === a && p.gender === g).length))]) }] };
+  } else if (t === 'demand') {
+    const ct = catTable();
+    rep = { title: 'Service Demand Analysis', subtitle: hubName, period, kpis: [['Services requested', fmtN(M.requested)], ['Delivered', fmtN(M.delivered)], ['Outstanding', fmtN(M.outstanding)], ['Unmet (not offered)', fmtN(M.unmet)], ['Avg services per visit', M.visits ? (M.requested / M.visits).toFixed(2) : '–']],
+      summary: [`The most requested services were ${ct.slice().sort((a, b) => Number(b[1].replace(/\D/g, '')) - Number(a[1].replace(/\D/g, ''))).slice(0, 3).map(r => r[0]).join(', ')}. Visitors requested ${(M.visits ? M.requested / M.visits : 0).toFixed(1)} services per visit on average.`],
+      chart: { title: 'Requested vs delivered by category', horizontal: true, height: 320, labels: A.ref.cats.map(c => c.name), datasets: [{ label: 'Requested', data: A.ref.cats.map(c => rows.filter(r => r.category_id === c.id).length) }, { label: 'Delivered', data: A.ref.cats.map(c => rows.filter(r => r.category_id === c.id && delivered(r)).length) }] },
+      tables: [{ title: 'Demand by service category', sheet: 'Demand', cols: ['Category', 'Requested', 'Delivered', 'Referred', 'Unmet', 'Beneficiaries'], rows: ct },
+        { title: 'Demand by Hub and category', sheet: 'Hub x Category', cols: ['Hub', ...A.ref.cats.map(c => c.name)], rows: myHubs().filter(h => !RS.hub || h.id === RS.hub).map(h => [h.name, ...A.ref.cats.map(c => fmtN(rows.filter(r => r.hub_id === h.id && r.category_id === c.id).length))]) }] };
+  } else if (t === 'satisfaction') {
+    const fbs = await all(() => { let qq = sb.from('feedback').select('hub_id, rating, assisted, staff_helpful, visit_again, improve, additional_needs, created_at').eq('org_id', A.m.org_id)
+      .gte('created_at', new Date(from + 'T00:00:00+02:00').toISOString()).lt('created_at', new Date(addDays(to, 1) + 'T00:00:00+02:00').toISOString()).order('created_at'); if (RS.hub) qq = qq.eq('hub_id', RS.hub); return qq; });
+    const avg = a => a.length ? (a.reduce((x, y) => x + y, 0) / a.length).toFixed(2) : '–';
+    const share = (k, v) => fmtPct(pct(fbs.filter(f => f[k] === v).length, fbs.filter(f => f[k]).length));
+    rep = { title: 'Visitor Satisfaction Report', subtitle: hubName, period,
+      kpis: [['Responses', fmtN(fbs.length)], ['Average rating', avg(fbs.map(f => f.rating).filter(Boolean)) + '/5'], ['Fully assisted', share('assisted', 'yes')], ['Staff helpful', share('staff_helpful', 'yes')], ['Would visit again', share('visit_again', 'yes')]],
+      summary: [`${fmtN(fbs.length)} visitors gave feedback in this period, with an average rating of ${avg(fbs.map(f => f.rating).filter(Boolean))}/5. ${share('assisted', 'yes')} said they were fully assisted and ${share('visit_again', 'yes')} would visit again.`],
+      chart: { title: 'Rating distribution', labels: ['1 Poor', '2 Fair', '3 Good', '4 Very good', '5 Excellent'], datasets: [{ label: 'Responses', data: [1, 2, 3, 4, 5].map(n => fbs.filter(f => f.rating === n).length) }] },
+      tables: [{ title: 'Satisfaction by Hub', sheet: 'By Hub', cols: ['Hub', 'Responses', 'Avg rating', 'Fully assisted', 'Would return'],
+          rows: myHubs().filter(h => !RS.hub || h.id === RS.hub).map(h => { const f = fbs.filter(x => x.hub_id === h.id); return [h.name, fmtN(f.length), avg(f.map(x => x.rating).filter(Boolean)), fmtPct(pct(f.filter(x => x.assisted === 'yes').length, f.length)), fmtPct(pct(f.filter(x => x.visit_again === 'yes').length, f.length))]; }) },
+        { title: 'Satisfaction by programme', sheet: 'By Programme', cols: ['Programme', 'Rated visits', 'Avg rating'],
+          rows: A.ref.progs.map(p => { const vv = uniq(rows.filter(r => r.programme_id === p.id && r.rating != null).map(r => r.visit_id + '|' + r.rating)).map(x => Number(x.split('|')[1])); return [p.name, fmtN(vv.length), avg(vv)]; }).filter(r => r[1] !== '0') },
+        { title: 'Suggestions for improvement', sheet: 'Comments', num: false, cols: ['Date', 'Hub', 'Comment'], rows: fbs.filter(f => f.improve || f.additional_needs).slice(-100).reverse().map(f => [fmtDate(f.created_at), nameOf(A.ref.hubs, f.hub_id), [f.improve, f.additional_needs && ('Other needs: ' + f.additional_needs)].filter(Boolean).join(' · ')]) }] };
+  } else if (t === 'referral') {
+    const refs = rows.filter(r => r.status === 'referred');
+    const fu = await q((() => { let qq = sb.from('visit_services').select('id, status, follow_up_date, category_id, visit:visits!inner(ticket_no, hub_id, visited_at)').eq('org_id', A.m.org_id).eq('status', 'follow_up').order('follow_up_date', { ascending: true, nullsFirst: false }).limit(300); if (RS.hub) qq = qq.eq('visit.hub_id', RS.hub); return qq; })());
+    const byOrg = countBy(refs, r => r.referral_org || 'Not recorded');
+    rep = { title: 'Referral and Follow-up Report', subtitle: hubName, period, kpis: [['Referrals', fmtN(refs.length)], ['Partner organisations', fmtN(byOrg.length)], ['People referred', fmtN(uniq(refs.map(r => r.visitor_id)).length)], ['Open follow-ups (all time)', fmtN(fu.length)], ['Overdue follow-ups', fmtN(fu.filter(f => f.follow_up_date && f.follow_up_date < today()).length)]],
+      summary: [`${fmtN(refs.length)} referrals were made to ${fmtN(byOrg.length)} external organisations. The most common referral partners were ${byOrg.slice(0, 3).map(x => x[0] + ' (' + x[1] + ')').join(', ') || '—'}.`],
+      chart: { title: 'Referrals by partner organisation', horizontal: true, height: Math.max(180, byOrg.length * 38), labels: byOrg.map(x => x[0]), datasets: [{ label: 'Referrals', data: byOrg.map(x => x[1]) }] },
+      tables: [{ title: 'Referrals by organisation and service', sheet: 'Referrals', cols: ['Organisation', 'Referrals', ...A.ref.cats.filter(c => refs.some(r => r.category_id === c.id)).map(c => c.name)],
+          rows: byOrg.map(([o, n]) => [o, fmtN(n), ...A.ref.cats.filter(c => refs.some(r => r.category_id === c.id)).map(c => fmtN(refs.filter(r => (r.referral_org || 'Not recorded') === o && r.category_id === c.id).length))]) },
+        { title: 'Open follow-ups', sheet: 'Follow-ups', num: false, cols: ['Hub', 'Visit date', 'Ticket', 'Service', 'Follow-up due'], rows: fu.map(f => [nameOf(A.ref.hubs, f.visit.hub_id), fmtDate(f.visit.visited_at), f.visit.ticket_no, nameOf(A.ref.cats, f.category_id), f.follow_up_date ? fmtDate(f.follow_up_date) + (f.follow_up_date < today() ? ' (overdue)' : '') : 'Not set']) }] };
+  } else if (t === 'unmet') {
+    const un = rows.filter(r => !r.is_available);
+    const byCat = countBy(un, r => r.category_name);
+    const texts = await all(() => { let qq = sb.from('visits').select('hub_id, visited_at, unmet_other').eq('org_id', A.m.org_id).not('unmet_other', 'is', null)
+      .gte('visited_at', new Date(from + 'T00:00:00+02:00').toISOString()).lt('visited_at', new Date(addDays(to, 1) + 'T00:00:00+02:00').toISOString()); if (RS.hub) qq = qq.eq('hub_id', RS.hub); return qq; });
+    rep = { title: 'Unmet Community Needs Report', subtitle: hubName, period, kpis: [['Unmet requests', fmtN(un.length)], ['People affected', fmtN(uniq(un.map(r => r.visitor_id)).length)], ['Service gaps', fmtN(byCat.length)], ['Share of all requests', fmtPct(pct(un.length, rows.length))]],
+      summary: [un.length ? `Visitors asked for ${fmtN(un.length)} services that their Hub does not offer, affecting ${fmtN(uniq(un.map(r => r.visitor_id)).length)} people. The largest gaps are ${byCat.slice(0, 3).map(x => x[0] + ' (' + x[1] + ')').join(', ')}. This is evidence for new programmes and funding applications.` : 'No unmet needs were recorded for this selection.'],
+      chart: byCat.length ? { title: 'Unmet requests by service', horizontal: true, height: Math.max(160, byCat.length * 42), labels: byCat.map(x => x[0]), datasets: [{ label: 'Unmet requests', data: byCat.map(x => x[1]), backgroundColor: '#eb6834' }] } : null,
+      tables: [{ title: 'Unmet needs by Hub', sheet: 'By Hub', cols: ['Hub', 'Service', 'Requests', 'People'],
+          rows: Object.entries(groupBy(un, r => r.hub_name + '|' + r.category_name)).sort((a, b) => b[1].length - a[1].length).map(([k, v]) => [...k.split('|'), fmtN(v.length), fmtN(uniq(v.map(r => r.visitor_id)).length)]) },
+        { title: 'Other needs described by visitors', sheet: 'Described needs', num: false, cols: ['Date', 'Hub', 'Need'], rows: texts.map(x => [fmtDate(x.visited_at), nameOf(A.ref.hubs, x.hub_id), x.unmet_other]) }] };
+  }
+  renderReport(out, rep);
+}
+
+/* =====================================================================
+   ADMINISTRATION (Module 7)
+   ===================================================================== */
+const ADMIN_TABS = [
+  ['hubs', 'Hubs & kiosks'], ['regions', 'Regions'], ['services', 'Service categories'], ['programmes', 'Programmes'], ['donors', 'Donors & funding'],
+  ['users', 'Users & access'], ['communities', 'Communities'], ['settings', 'Settings & POPIA'], ['audit', 'Audit log']
+];
+let ADM = 'hubs';
+async function vAdmin() {
+  const tabs = role() === 'hub_manager' ? ADMIN_TABS.filter(t => t[0] === 'hubs') : ADMIN_TABS;
+  if (!tabs.find(t => t[0] === ADM)) ADM = tabs[0][0];
+  $('page').innerHTML = `<div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${ADM === k ? 'on' : ''}" data-a="${k}">${l}</button>`).join('')}</div><div id="aout"></div>`;
+  document.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { ADM = b.dataset.a; vAdmin().catch(fail); });
+  await ({ hubs: aHubs, regions: aRegions, services: aServices, programmes: aProgrammes, donors: aDonors, users: aUsers, communities: aCommunities, settings: aSettings, audit: aAudit }[ADM])();
+}
+const reload = async () => { await loadRef(); await vAdmin(); };
+const isAdmin = () => can(MANAGERS);
+const fld = (label, html, full) => `<div ${full ? 'style="grid-column:1/-1"' : ''}><label class="lb">${label}</label>${html}</div>`;
+const tbl = (cols, rows, empty = 'Nothing here yet.') => `<div class="card" style="padding:0;overflow:auto"><table class="t"><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.join('') || `<tr><td colspan="${cols.length}" class="faint">${empty}</td></tr>`}</tbody></table></div>`;
+const activeBadge = a => a ? '<span class="badge">Active</span>' : '<span class="badge grey">Inactive</span>';
+
+async function aHubs() {
+  const links = await q(sb.rpc('kiosk_links', { p_org: A.m.org_id }));
+  const base = new URL('kiosk.html', location.href).href;
+  $('aout').innerHTML = `
+    <div class="row" style="justify-content:space-between;margin-bottom:12px"><div class="muted">Each Hub has its own kiosk link. Open it once on the Hub's tablet — the tablet remembers it.</div>${isAdmin() ? '<button class="btn" id="newHub">+ Add hub</button>' : ''}</div>
+    ${tbl(['Hub', 'Region', 'Services offered', 'Kiosk link', 'Status', ''], A.ref.hubs.filter(h => can(MANAGERS) || (A.m.hub_ids || []).includes(h.id)).map(h => {
+      const l = links.find(x => x.hub_id === h.id);
+      const url = l ? base + '?k=' + l.token : '';
+      return `<tr><td><span class="chip"><span class="dot" style="background:${esc(h.brand_colour)}"></span>${esc(h.name)}</span><div class="faint" style="font-size:12px">${esc(h.code || '')}</div></td>
+        <td>${esc(nameOf(A.ref.regions, h.region_id))}</td><td>${A.ref.hubSvc.filter(s => s.hub_id === h.id).length} of ${A.ref.cats.filter(c => c.active).length}</td>
+        <td>${l ? `<button class="btn sm sec" data-copy="${esc(url)}">Copy link</button> <a class="btn sm sec" href="${esc(url)}" target="_blank" style="text-decoration:none">Open</a> <button class="btn sm sec" data-rot="${h.id}" title="Old link stops working">New link</button>` : '—'}</td>
+        <td>${activeBadge(h.active)}</td><td>${isAdmin() ? `<button class="btn sm sec" data-edit="${h.id}">Edit</button>` : ''}</td></tr>`;
+    }))}
+    <div class="note" style="margin-top:12px">Kiosk links are secret: anyone with a link can register visitors at that Hub, but nobody can read visitor data with it. If a tablet is lost, click <b>New link</b> to disable the old one.</div>`;
+  document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => navigator.clipboard.writeText(b.dataset.copy).then(() => toast('Kiosk link copied')));
+  document.querySelectorAll('[data-rot]').forEach(b => b.onclick = async () => { if (!await confirmDlg('Create a new kiosk link?', 'The current link stops working immediately. You will need to open the new link on the Hub\'s tablet.', 'Create new link')) return; try { await q(sb.rpc('rotate_kiosk', { p_hub: b.dataset.rot })); toast('New kiosk link created'); aHubs(); } catch (e) { fail(e); } });
+  document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => hubForm(byId(A.ref.hubs, b.dataset.edit)));
+  if ($('newHub')) $('newHub').onclick = () => hubForm({ active: true, brand_colour: '#0f766e' });
+}
+function hubForm(h) {
+  const offered = new Set(A.ref.hubSvc.filter(s => s.hub_id === h.id).map(s => s.category_id));
+  if (!h.id) A.ref.cats.forEach(c => offered.add(c.id));
+  modal(h.id ? 'Edit hub' : 'Add hub', `<div class="fld grid g2" style="gap:0 14px">
+    ${fld('Hub name', `<input class="i" id="h_name" value="${esc(h.name || '')}">`, true)}
+    ${fld('Short code', `<input class="i" id="h_code" value="${esc(h.code || '')}">`)}
+    ${fld('Region', `<select class="i" id="h_region">${opts(A.ref.regions, h.region_id, 'No region')}</select>`)}
+    ${fld('Address', `<input class="i" id="h_addr" value="${esc(h.address || '')}">`, true)}
+    ${fld('Brand colour (kiosk)', `<input class="i" type="color" id="h_col" value="${esc(h.brand_colour || '#0f766e')}" style="height:40px;padding:4px">`)}
+    ${fld('Status', `<select class="i" id="h_act">${opts([{ id: 'true', name: 'Active' }, { id: 'false', name: 'Inactive' }], String(h.active !== false))}</select>`)}
+    ${fld('Kiosk welcome message', `<textarea class="i" id="h_wel">${esc(h.welcome_message || '')}</textarea>`, true)}</div>
+    <label class="lb">Services offered at this Hub</label><div class="checks">${A.ref.cats.filter(c => c.active).map(c => `<label><input type="checkbox" value="${c.id}" ${offered.has(c.id) ? 'checked' : ''}> ${esc(c.icon || '')} ${esc(c.name)}</label>`).join('')}</div>
+    <div class="faint" style="font-size:12.5px;margin-top:6px">Unticked services still appear on the kiosk as "not offered here" so visitors can record the need.</div>`,
+  { save: async w => {
+    const row = { org_id: A.m.org_id, name: $('h_name').value.trim(), code: $('h_code').value.trim() || null, region_id: $('h_region').value || null, address: $('h_addr').value.trim() || null,
+                  brand_colour: $('h_col').value, active: $('h_act').value === 'true', welcome_message: $('h_wel').value.trim() || null };
+    if (!row.name) { toast('Enter a hub name', true); return false; }
+    const saved = h.id ? (await q(sb.from('hubs').update(row).eq('id', h.id).select().single())) : (await q(sb.from('hubs').insert(row).select().single()));
+    const want = [...w.querySelectorAll('.checks input:checked')].map(i => i.value);
+    await q(sb.from('hub_services').delete().eq('hub_id', saved.id));
+    if (want.length) await q(sb.from('hub_services').insert(want.map(c => ({ hub_id: saved.id, category_id: c, org_id: A.m.org_id }))));
+    toast('Hub saved'); await reload();
+  } });
+}
+
+function simpleCrud({ table, title, rows, cols, render, fields, defaults = {}, allowDelete }) {
+  $('aout').innerHTML = `<div class="row" style="justify-content:flex-end;margin-bottom:12px"><button class="btn" id="addRow">+ Add ${title}</button></div>
+    ${tbl([...cols, ''], rows.map(r => `<tr>${render(r).map(c => `<td>${c}</td>`).join('')}<td style="white-space:nowrap"><button class="btn sm sec" data-e="${r.id}">Edit</button>${allowDelete ? ` <button class="btn sm danger" data-d="${r.id}">Delete</button>` : ''}</td></tr>`))}`;
+  const form = r => modal((r.id ? 'Edit ' : 'Add ') + title, `<div class="fld">${fields.map(f => fld(f.label,
+      f.type === 'select' ? `<select class="i" data-k="${f.k}">${f.options(r[f.k])}</select>` :
+      f.type === 'textarea' ? `<textarea class="i" data-k="${f.k}">${esc(r[f.k] || '')}</textarea>` :
+      f.type === 'bool' ? `<select class="i" data-k="${f.k}" data-bool>${opts([{ id: 'true', name: f.yes || 'Active' }, { id: 'false', name: f.no || 'Inactive' }], String(r[f.k] !== false))}</select>` :
+      `<input class="i" data-k="${f.k}" type="${f.type || 'text'}" value="${esc(r[f.k] == null ? '' : r[f.k])}">`)).join('')}</div>`,
+    { save: async w => {
+      const row = Object.assign({ org_id: A.m.org_id }, defaults);
+      w.querySelectorAll('[data-k]').forEach(el => { let v = el.value; if (el.hasAttribute('data-bool')) v = v === 'true'; else if (el.type === 'number') v = v === '' ? null : Number(v); else if (v === '') v = null; row[el.dataset.k] = v; });
+      const miss = fields.find(f => f.req && (row[f.k] == null || row[f.k] === ''));
+      if (miss) { toast('Please fill in ' + miss.label, true); return false; }
+      if (r.id) await q(sb.from(table).update(row).eq('id', r.id)); else await q(sb.from(table).insert(row));
+      toast(title + ' saved'); await reload();
+    } });
+  $('addRow').onclick = () => form({ active: true });
+  document.querySelectorAll('[data-e]').forEach(b => b.onclick = () => form(byId(rows, b.dataset.e)));
+  document.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => { if (!await confirmDlg('Delete?', 'This cannot be undone.', 'Delete')) return; try { await q(sb.from(table).delete().eq('id', b.dataset.d)); toast('Deleted'); await reload(); } catch (e) { fail(e); } });
+}
+
+async function aRegions() {
+  simpleCrud({ table: 'regions', title: 'region', rows: A.ref.regions, cols: ['Region', 'Province', 'Hubs'], allowDelete: true,
+    render: r => [esc(r.name), esc(r.province || ''), A.ref.hubs.filter(h => h.region_id === r.id).length],
+    fields: [{ k: 'name', label: 'Region name', req: true }, { k: 'province', label: 'Province', type: 'select', options: v => sopts(['Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape', 'Western Cape'], v, 'Select…') }] });
+}
+async function aServices() {
+  simpleCrud({ table: 'service_categories', title: 'service category', rows: A.ref.cats, cols: ['', 'Category', 'Examples (shown on kiosk)', 'Order', 'Status'],
+    render: c => [esc(c.icon || ''), `<b>${esc(c.name)}</b>`, esc(c.examples || ''), c.sort_order, activeBadge(c.active)],
+    fields: [{ k: 'name', label: 'Category name', req: true }, { k: 'icon', label: 'Icon (an emoji, e.g. 💼)' }, { k: 'examples', label: 'Examples', type: 'textarea' }, { k: 'sort_order', label: 'Display order', type: 'number' }, { k: 'active', label: 'Status', type: 'bool' }] });
+  $('aout').insertAdjacentHTML('beforeend', '<div class="note" style="margin-top:12px">Deactivate a category instead of deleting it, so historical reports stay intact. Choose which Hubs offer each service under <b>Hubs & kiosks → Edit</b>.</div>');
+}
+async function aProgrammes() {
+  simpleCrud({ table: 'programmes', title: 'programme', rows: A.ref.progs, cols: ['Programme', 'Service category', 'Funded by', 'Status'],
+    render: p => [`<b>${esc(p.name)}</b><div class="faint" style="font-size:12.5px">${esc(p.description || '')}</div>`, esc(nameOf(A.ref.cats, p.category_id)),
+      uniq(A.ref.allocs.filter(a => a.programme_id === p.id).map(a => nameOf(A.ref.donors, a.donor_id))).map(n => chip(n)).join('') || '<span class="faint">—</span>', activeBadge(p.active)],
+    fields: [{ k: 'name', label: 'Programme name', req: true }, { k: 'category_id', label: 'Service category (kiosk requests are linked automatically)', type: 'select', options: v => opts(A.ref.cats, v, 'None') },
+             { k: 'description', label: 'Description', type: 'textarea' }, { k: 'active', label: 'Status', type: 'bool' }] });
+}
+async function aDonors() {
+  $('aout').innerHTML = `<div class="grid" style="gap:18px"><div id="dl"></div><div><div class="row" style="justify-content:space-between;margin:8px 0 12px"><h3 style="margin:0">Funding allocations</h3><button class="btn" id="addAl">+ Add allocation</button></div><div id="al"></div>
+    <div class="note" style="margin-top:12px">An allocation links a donor to a programme (optionally one Hub) for a period. Services recorded under that programme, at that Hub, within those dates count towards the donor's impact report.</div></div></div>`;
+  $('dl').innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><h3 style="margin:0">Donors</h3><button class="btn" id="addD">+ Add donor</button></div>` +
+    tbl(['Donor', 'Contact', 'Total allocated', 'Status', ''], A.ref.donors.map(d => `<tr><td><b>${esc(d.name)}</b><div class="faint" style="font-size:12.5px">${esc(d.notes || '')}</div></td><td>${esc(d.contact_name || '')}<div class="faint">${esc(d.contact_email || '')}</div></td>
+      <td>${fmtR(A.ref.allocs.filter(a => a.donor_id === d.id).reduce((s, a) => s + Number(a.amount), 0))}</td><td>${activeBadge(d.active)}</td><td><button class="btn sm sec" data-ed="${d.id}">Edit</button></td></tr>`));
+  $('al').innerHTML = tbl(['Donor', 'Programme', 'Hub', 'Amount', 'Period', ''], A.ref.allocs.map(a => `<tr><td>${esc(nameOf(A.ref.donors, a.donor_id))}</td><td>${esc(nameOf(A.ref.progs, a.programme_id))}</td><td>${esc(a.hub_id ? nameOf(A.ref.hubs, a.hub_id) : 'All hubs')}</td>
+      <td>${fmtR(a.amount)}</td><td>${fmtDate(a.start_date)} – ${fmtDate(a.end_date)}</td><td style="white-space:nowrap"><button class="btn sm sec" data-ea="${a.id}">Edit</button> <button class="btn sm danger" data-da="${a.id}">Delete</button></td></tr>`));
+  const dForm = d => modal(d.id ? 'Edit donor' : 'Add donor', `<div class="fld">${fld('Donor name', `<input class="i" id="d_name" value="${esc(d.name || '')}">`)}${fld('Contact person', `<input class="i" id="d_cn" value="${esc(d.contact_name || '')}">`)}
+      ${fld('Contact email', `<input class="i" id="d_ce" type="email" value="${esc(d.contact_email || '')}">`)}${fld('Notes', `<textarea class="i" id="d_notes">${esc(d.notes || '')}</textarea>`)}
+      ${fld('Status', `<select class="i" id="d_act">${opts([{ id: 'true', name: 'Active' }, { id: 'false', name: 'Inactive' }], String(d.active !== false))}</select>`)}</div>`,
+    { save: async () => { const row = { org_id: A.m.org_id, name: $('d_name').value.trim(), contact_name: $('d_cn').value.trim() || null, contact_email: $('d_ce').value.trim() || null, notes: $('d_notes').value.trim() || null, active: $('d_act').value === 'true' };
+      if (!row.name) { toast('Enter a donor name', true); return false; }
+      if (d.id) await q(sb.from('donors').update(row).eq('id', d.id)); else await q(sb.from('donors').insert(row)); toast('Donor saved'); await reload(); } });
+  const aForm = a => modal(a.id ? 'Edit allocation' : 'Add funding allocation', `<div class="fld grid g2" style="gap:0 14px">
+      ${fld('Donor', `<select class="i" id="a_d">${opts(A.ref.donors, a.donor_id)}</select>`)}${fld('Programme', `<select class="i" id="a_p">${opts(A.ref.progs, a.programme_id)}</select>`)}
+      ${fld('Hub', `<select class="i" id="a_h">${opts(A.ref.hubs, a.hub_id, 'All hubs')}</select>`)}${fld('Amount (R)', `<input class="i" id="a_amt" type="number" min="0" step="1000" value="${esc(a.amount || '')}">`)}
+      ${fld('Start date', `<input class="i" id="a_s" type="date" value="${esc(a.start_date || today())}">`)}${fld('End date', `<input class="i" id="a_e" type="date" value="${esc(a.end_date || addDays(today(), 364))}">`)}
+      ${fld('Notes', `<input class="i" id="a_n" value="${esc(a.notes || '')}">`, true)}</div>`,
+    { save: async () => { const row = { org_id: A.m.org_id, donor_id: $('a_d').value, programme_id: $('a_p').value, hub_id: $('a_h').value || null, amount: Number($('a_amt').value || 0), start_date: $('a_s').value, end_date: $('a_e').value, notes: $('a_n').value.trim() || null };
+      if (!row.donor_id || !row.programme_id) { toast('Choose a donor and a programme', true); return false; }
+      if (row.end_date < row.start_date) { toast('End date must be after start date', true); return false; }
+      if (a.id) await q(sb.from('funding_allocations').update(row).eq('id', a.id)); else await q(sb.from('funding_allocations').insert(row)); toast('Allocation saved'); await reload(); } });
+  $('addD').onclick = () => dForm({});
+  $('addAl').onclick = () => A.ref.donors.length && A.ref.progs.length ? aForm({}) : toast('Add a donor and a programme first', true);
+  document.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => dForm(byId(A.ref.donors, b.dataset.ed)));
+  document.querySelectorAll('[data-ea]').forEach(b => b.onclick = () => aForm(byId(A.ref.allocs, b.dataset.ea)));
+  document.querySelectorAll('[data-da]').forEach(b => b.onclick = async () => { if (!await confirmDlg('Delete allocation?', 'Reports for this donor will no longer include this programme.', 'Delete')) return; try { await q(sb.from('funding_allocations').delete().eq('id', b.dataset.da)); await reload(); } catch (e) { fail(e); } });
+}
+
+async function aUsers() {
+  const [mh, mp] = await Promise.all([q(sb.from('member_hubs').select('*').eq('org_id', A.m.org_id)), q(sb.from('member_programmes').select('*').eq('org_id', A.m.org_id))]);
+  $('aout').innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><div class="muted">Add a person here, then ask them to open the app and choose <b>Create your account</b> with the same email.</div><button class="btn" id="addU">+ Add user</button></div>
+    ${tbl(['Name', 'Email', 'Role', 'Access', 'Account', ''], A.ref.members.map(m => `<tr><td><b>${esc(m.full_name)}</b></td><td>${esc(m.email)}</td><td>${esc(ROLE_LABEL[m.role])}</td>
+      <td>${m.role === 'donor_viewer' ? chip(nameOf(A.ref.donors, m.donor_id)) : MANAGERS.includes(m.role) ? '<span class="faint">All hubs</span>' :
+        [...mh.filter(x => x.member_id === m.id).map(x => chip(nameOf(A.ref.hubs, x.hub_id).replace(' Community Hub', ''))), ...mp.filter(x => x.member_id === m.id).map(x => chip(nameOf(A.ref.progs, x.programme_id)))].join('') || '<span class="faint">None</span>'}</td>
+      <td>${m.user_id ? '<span class="badge">Linked</span>' : '<span class="badge grey">Invited</span>'} ${m.active ? '' : '<span class="badge grey">Disabled</span>'}</td>
+      <td><button class="btn sm sec" data-u="${m.id}">Edit</button></td></tr>`))}
+    <div class="note" style="margin-top:12px"><b>Roles:</b> Super Administrator — full control · Management — all Hubs, dashboards & reports · Hub Manager — their Hubs, kiosk links & reports · Hub Staff — visitor & service management at their Hubs · Programme Manager — their programmes' data & reporting · Donor Viewer — their own impact report only, never beneficiary details.</div>`;
+  const form = m => {
+    const hubs = new Set(mh.filter(x => x.member_id === m.id).map(x => x.hub_id)), progs = new Set(mp.filter(x => x.member_id === m.id).map(x => x.programme_id));
+    const roles = Object.keys(ROLE_LABEL).filter(r => r !== 'super_admin' || role() === 'super_admin' || m.role === 'super_admin');
+    const w = modal(m.id ? 'Edit user' : 'Add user', `<div class="fld grid g2" style="gap:0 14px">
+      ${fld('Full name', `<input class="i" id="u_name" value="${esc(m.full_name || '')}">`)}${fld('Email', `<input class="i" id="u_email" type="email" value="${esc(m.email || '')}" ${m.user_id ? 'disabled' : ''}>`)}
+      ${fld('Role', `<select class="i" id="u_role">${opts(roles.map(r => ({ id: r, name: ROLE_LABEL[r] })), m.role || 'hub_staff')}</select>`)}
+      ${fld('Status', `<select class="i" id="u_act">${opts([{ id: 'true', name: 'Active' }, { id: 'false', name: 'Disabled' }], String(m.active !== false))}</select>`)}</div>
+      <div id="u_donor"><label class="lb">Donor (for Donor Viewers)</label><select class="i" id="u_d" style="width:100%">${opts(A.ref.donors, m.donor_id, 'Select donor')}</select></div>
+      <div id="u_hubs"><label class="lb">Hubs</label><div class="checks">${A.ref.hubs.map(h => `<label><input type="checkbox" data-h value="${h.id}" ${hubs.has(h.id) ? 'checked' : ''}> ${esc(h.name)}</label>`).join('')}</div></div>
+      <div id="u_progs"><label class="lb">Programmes (for Programme Managers)</label><div class="checks">${A.ref.progs.map(p => `<label><input type="checkbox" data-p value="${p.id}" ${progs.has(p.id) ? 'checked' : ''}> ${esc(p.name)}</label>`).join('')}</div></div>`,
+    { save: async w => {
+      const row = { org_id: A.m.org_id, full_name: $('u_name').value.trim(), role: $('u_role').value, active: $('u_act').value === 'true', donor_id: $('u_role').value === 'donor_viewer' ? ($('u_d').value || null) : null };
+      if (!m.id) row.email = $('u_email').value.trim().toLowerCase();
+      if (!row.full_name || (!m.id && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(row.email))) { toast('Enter a name and a valid email', true); return false; }
+      if (row.role === 'donor_viewer' && !row.donor_id) { toast('Choose the donor this person may view', true); return false; }
+      if (m.id === A.m.member_id && (row.role !== m.role || !row.active)) { toast('You cannot change your own role or disable yourself', true); return false; }
+      const saved = m.id ? await q(sb.from('members').update(row).eq('id', m.id).select().single()) : await q(sb.from('members').insert(row).select().single());
+      await q(sb.from('member_hubs').delete().eq('member_id', saved.id));
+      await q(sb.from('member_programmes').delete().eq('member_id', saved.id));
+      const hs = ['hub_manager', 'hub_staff', 'programme_manager'].includes(row.role) ? [...w.querySelectorAll('[data-h]:checked')].map(i => i.value) : [];
+      const ps = row.role === 'programme_manager' ? [...w.querySelectorAll('[data-p]:checked')].map(i => i.value) : [];
+      if (hs.length) await q(sb.from('member_hubs').insert(hs.map(h => ({ member_id: saved.id, hub_id: h, org_id: A.m.org_id }))));
+      if (ps.length) await q(sb.from('member_programmes').insert(ps.map(p => ({ member_id: saved.id, programme_id: p, org_id: A.m.org_id }))));
+      toast(m.id ? 'User updated' : 'User added — ask them to create their account with ' + row.email); await reload();
+    } });
+    const sync = () => { const r = $('u_role').value; $('u_donor').classList.toggle('hidden', r !== 'donor_viewer'); $('u_hubs').classList.toggle('hidden', !['hub_manager', 'hub_staff', 'programme_manager'].includes(r)); $('u_progs').classList.toggle('hidden', r !== 'programme_manager'); };
+    $('u_role').onchange = sync; sync();
+  };
+  $('addU').onclick = () => form({ active: true });
+  document.querySelectorAll('[data-u]').forEach(b => b.onclick = () => form(byId(A.ref.members, b.dataset.u)));
+}
+
+async function aCommunities() {
+  simpleCrud({ table: 'communities', title: 'community', rows: A.ref.comms, cols: ['Community', 'Shown at'], allowDelete: true,
+    render: c => [esc(c.name), esc(c.hub_id ? nameOf(A.ref.hubs, c.hub_id) : 'All hubs')],
+    fields: [{ k: 'name', label: 'Community / area name', req: true }, { k: 'hub_id', label: 'Show on kiosk at', type: 'select', options: v => opts(A.ref.hubs, v, 'All hubs') }] });
+  $('aout').insertAdjacentHTML('afterbegin', '<div class="note" style="margin-bottom:12px">These appear as quick-tap options on the kiosk. Visitors can always type a different area.</div>');
+}
+
+async function aSettings() {
+  const s = A.ref.org.settings || {}; const rf = s.reg_fields || {}; const fq = s.feedback || {};
+  const sa = role() === 'super_admin';
+  const tog = (id, on, label) => `<label><input type="checkbox" id="${id}" ${on !== false ? 'checked' : ''} ${sa ? '' : 'disabled'}> ${label}</label>`;
+  $('aout').innerHTML = `<div class="grid g2">
+    <div class="card"><h3>Organisation</h3><div class="fld">
+      ${fld('Organisation name', `<input class="i" id="s_name" value="${esc(A.ref.org.name)}" ${sa ? '' : 'disabled'}>`)}
+      ${fld('Kiosk idle reset (seconds)', `<input class="i" id="s_idle" type="number" min="30" max="600" value="${esc(s.kiosk_idle_seconds || 90)}" ${sa ? '' : 'disabled'}>`)}</div>
+      <label class="lb">Registration fields on the kiosk</label><div class="checks">${tog('rf_age', rf.age_group, 'Age group')}${tog('rf_gender', rf.gender, 'Gender')}${tog('rf_comm', rf.community, 'Community')}${tog('rf_email', rf.email, 'Email address')}</div>
+      <div class="faint" style="font-size:12.5px;margin-top:6px">Name and mobile number are always required — they identify returning visitors.</div>
+      <label class="lb">Feedback questions</label><div class="checks">${tog('fq_assisted', fq.assisted, '1. Were you assisted?')}${tog('fq_rating', fq.rating, '2. Rating 1–5')}${tog('fq_staff', fq.staff_helpful, '3. Staff helpful?')}${tog('fq_again', fq.visit_again, '4. Visit again?')}${tog('fq_imp', fq.improve, '5. What to improve')}${tog('fq_needs', fq.additional_needs, '6. Additional needs')}</div></div>
+    <div class="card"><h3>POPIA</h3><div class="fld">
+      ${fld('Privacy notice shown before registration', `<textarea class="i" id="s_notice" style="min-height:170px" ${sa ? '' : 'disabled'}>${esc(s.privacy_notice || '')}</textarea>`)}
+      <div class="grid g2" style="gap:0 14px">${fld('Consent version', `<input class="i" id="s_cv" value="${esc(s.consent_version || 'v1')}" ${sa ? '' : 'disabled'}>`)}
+      ${fld('Retention period (months after last visit)', `<input class="i" id="s_ret" type="number" min="6" value="${esc(s.retention_months || 36)}" ${sa ? '' : 'disabled'}>`)}</div></div>
+      <div class="faint" style="font-size:12.5px;margin-top:6px">Change the consent version whenever you change the notice. Each visitor's consent is recorded with the version they agreed to.</div>
+      ${sa ? `<div class="row" style="margin-top:14px"><button class="btn danger" id="runRet">Apply retention now</button><span class="faint" style="font-size:12.5px">Anonymises visitors whose last visit is older than the retention period.</span></div>` : ''}</div>
+  </div>
+  ${sa ? '<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" id="saveS">Save settings</button></div>' : '<div class="note" style="margin-top:12px">Only a Super Administrator can change these settings.</div>'}`;
+  if (!sa) return;
+  $('saveS').onclick = async () => {
+    const ns = Object.assign({}, s, { kiosk_idle_seconds: Number($('s_idle').value) || 90, privacy_notice: $('s_notice').value.trim(), consent_version: $('s_cv').value.trim() || 'v1', retention_months: Number($('s_ret').value) || 36,
+      reg_fields: { age_group: $('rf_age').checked, gender: $('rf_gender').checked, community: $('rf_comm').checked, email: $('rf_email').checked },
+      feedback: { assisted: $('fq_assisted').checked, rating: $('fq_rating').checked, staff_helpful: $('fq_staff').checked, visit_again: $('fq_again').checked, improve: $('fq_imp').checked, additional_needs: $('fq_needs').checked } });
+    try { await q(sb.from('organisations').update({ name: $('s_name').value.trim(), settings: ns }).eq('id', A.m.org_id)); toast('Settings saved'); await reload(); } catch (e) { fail(e); }
+  };
+  $('runRet').onclick = async () => {
+    if (!await confirmDlg('Apply retention?', `Visitors whose last visit was more than ${s.retention_months || 36} months ago will be permanently anonymised.`, 'Apply retention')) return;
+    try { const n = await q(sb.rpc('apply_retention', { p_org: A.m.org_id })); toast(n + ' visitor record(s) anonymised'); } catch (e) { fail(e); }
+  };
+}
+
+async function aAudit() {
+  const ent = $('aud_ent') ? $('aud_ent').value : '';
+  let qq = sb.from('audit_log').select('*').eq('org_id', A.m.org_id).order('created_at', { ascending: false }).limit(300);
+  if (ent) qq = qq.eq('entity', ent);
+  const rows = await q(qq);
+  const describe = r => { const d = r.details || {}; const keys = Object.keys(d).filter(k => !['id', 'org_id', 'created_at', 'feedback_token', 'updated_by'].includes(k)); return keys.slice(0, 6).map(k => `${k}: ${typeof d[k] === 'object' ? JSON.stringify(d[k]) : d[k]}`).join(' · '); };
+  $('aout').innerHTML = `<div class="filters"><span class="lbl">Show</span><select class="i" id="aud_ent">${sopts(['visitors', 'visits', 'visit_services', 'members', 'hubs', 'programmes', 'donors', 'funding_allocations', 'service_categories', 'organisations', 'kiosk_link'], ent, 'All activity')}</select>
+    <span class="faint" style="font-size:12.5px">Latest 300 entries. Visitor names and contact details are never written to the log.</span></div>
+    ${tbl(['When', 'Who', 'Action', 'Record', 'Details'], rows.map(r => `<tr><td style="white-space:nowrap">${fmtDT(r.created_at)}</td><td>${esc(r.actor || '')}</td><td>${esc(r.action)}</td><td>${esc(r.entity.replace(/_/g, ' '))}</td><td class="faint" style="font-size:12.5px;max-width:520px">${esc(describe(r))}</td></tr>`), 'No activity recorded yet.')}`;
+  $('aud_ent').onchange = () => aAudit().catch(fail);
+}
+
+boot();
+</script>
+</body>
+</html>
