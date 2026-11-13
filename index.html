@@ -115,6 +115,7 @@
   .oc span { font-size:15px; }
   .oc.on { color:#fff; border-color:transparent; }
   .oc.on.completed { background:#067647; } .oc.on.referred { background:#6250d6; } .oc.on.follow_up { background:#c4541f; } .oc.on.unable { background:#b42318; }
+  .svcline { display:grid; grid-template-columns:150px 1fr; gap:10px; font-size:14px; align-items:start; }
   .addchips { display:flex; flex-wrap:wrap; gap:6px; }
   .addchip { border:1.5px dashed #c3d3d0; background:#fafcfb; border-radius:999px; padding:6px 12px; font-weight:600; font-size:13px; cursor:pointer; color:var(--ink); }
   .addchip:hover { border-color:var(--brand); color:var(--brand); }
@@ -538,7 +539,7 @@ const OUTCOMES = [
   { k: 'follow_up', l: 'Follow-up needed', ic: '⟳' },
   { k: 'unable', l: "Couldn't help", ic: '✕' }
 ];
-async function recordVisit(id) {
+async function recordVisit(id, onSaved) {
   let v;
   try { v = await q(sb.from('visits').select(VISIT_SELECT).eq('id', id).single()); } catch (e) { return fail(e); }
   const vi = v.visitor || {};
@@ -604,11 +605,13 @@ async function recordVisit(id) {
     await q(sb.from('visits').update({ assigned_member_id: A.m.member_id }).eq('id', v.id));
     const note = $('rec_note').value.trim();
     if (note) await q(sb.from('visit_notes').insert({ org_id: v.org_id, visit_id: v.id, member_id: A.m.member_id, note }));
-    loadQueue(false).catch(() => {});
+    if (A.view === 'queue') loadQueue(false).catch(() => {});
+    if (onSaved) onSaved();
     if (!fbOf(v)) afterRecord(v); else toast(`Saved — ${first} has been removed from the list`);
   } });
   draw(); drawAdd();
   $('rec_hist').onclick = () => { w.remove(); openVisit(v.id); };
+  if (onSaved) $('rec_hist').classList.add('hidden');
 }
 
 function afterRecord(v) {
@@ -642,17 +645,21 @@ async function openVisit(id) {
 function renderVisit(d, v, notes, history) {
   const vi = v.visitor || {};
   const fbk = fbOf(v);
-  const staff = A.ref.members.filter(m => m.active && STAFF.includes(m.role));
-  const progs = A.ref.progs.filter(p => p.active);
   const editable = can(STAFF);
+  const svcs = (v.visit_services || []).filter(s => s.is_available);
+  const unmet = (v.visit_services || []).filter(s => !s.is_available);
+  const pending = svcs.some(isPending);
+  const stateLabel = pending ? 'Waiting for services to be recorded' : svcs.some(s => s.status === 'follow_up') ? 'Follow-up needed' : 'Services recorded';
+  const outcome = st => ({ completed: 'Provided', referred: 'Referred', follow_up: 'Follow-up needed', unable: "Couldn't help", awaiting: 'Not recorded yet', in_progress: 'Not recorded yet' }[st] || st);
+  const outcomeColour = st => isPending({ status: st, is_available: true }) ? 'var(--st-awaiting)' : STATUS[st].c;
   d.innerHTML = `
   <header>
-    <div class="qcard" style="padding:0;border:0;box-shadow:none;cursor:default"><div class="tk">${esc(v.ticket_no || '–')}</div></div>
+    <div class="recvis" style="margin:0"><div class="tk">${esc(initialsOf(vi.full_name))}</div></div>
     <div style="min-width:0">
       <div class="row" style="gap:6px"><h2 style="margin:0;font-size:20px">${esc(vi.full_name)}</h2>
         ${v.is_first_visit ? '<span class="badge new">First visit</span>' : '<span class="badge grey">Returning</span>'}
         ${vi.is_minor ? '<span class="badge minor">Under 18' + (vi.guardian_consent ? ' · guardian consent' : '') + '</span>' : ''}</div>
-      <div class="muted" style="font-size:13.5px;margin-top:4px">${esc(nameOf(A.ref.hubs, v.hub_id))} · ${fmtDT(v.visited_at)} · ${v.source === 'kiosk' ? 'Kiosk' : v.source === 'offline' ? 'Kiosk (offline)' : 'Staff capture'}</div>
+      <div class="muted" style="font-size:13.5px;margin-top:4px">${esc(nameOf(A.ref.hubs, v.hub_id))} · ${fmtDT(v.visited_at)} · ${v.source === 'staff' ? 'Added by staff' : 'Signed in on kiosk'}</div>
     </div>
     <button class="x" onclick="closeDrawer()">×</button>
   </header>
@@ -663,35 +670,18 @@ function renderVisit(d, v, notes, history) {
       <div><div class="faint" style="font-size:12px">Community</div>${esc(vi.community || '—')}</div>
       <div><div class="faint" style="font-size:12px">Age group</div>${esc(vi.age_group || '—')}</div>
       <div><div class="faint" style="font-size:12px">Gender</div>${esc(vi.gender || '—')}</div>
-      <div><div class="faint" style="font-size:12px">Visit status</div>${esc(VISIT_STATUS[v.status])}</div></div>
-      ${v.need_description ? `<div class="note" style="margin-top:12px"><b>What they need:</b> ${esc(v.need_description)}</div>` : ''}
-      ${v.unmet_other ? `<div class="note warn" style="margin-top:8px"><b>Other unmet need:</b> ${esc(v.unmet_other)}</div>` : ''}
-      ${editable ? `<div class="row" style="margin-top:12px">
-        <button class="btn sm" id="startAll">▶ Start helping</button>
-        <button class="btn sm sec" id="doneAll">✓ Mark all completed</button></div>` : ''}
+      <div><div class="faint" style="font-size:12px">This visit</div>${esc(stateLabel)}</div></div>
+      ${v.need_description ? `<div class="note" style="margin-top:12px"><b>What they needed:</b> ${esc(v.need_description)}</div>` : ''}
+      ${unmet.length ? `<div class="note warn" style="margin-top:8px"><b>Not offered at this Hub (unmet need):</b> ${unmet.map(s => esc(nameOf(A.ref.cats, s.category_id))).join(', ')}${v.unmet_other ? ' · ' + esc(v.unmet_other) : ''}</div>` : (v.unmet_other ? `<div class="note warn" style="margin-top:8px"><b>Other unmet need:</b> ${esc(v.unmet_other)}</div>` : '')}
     </div>
 
-    <div><h3 style="margin:6px 0 8px">Services requested</h3><div class="grid" style="gap:10px" id="svcs">
-      ${(v.visit_services || []).map(s => `
-        <div class="svc" data-sid="${s.id}">
-          <div class="hd"><b>${esc((byId(A.ref.cats, s.category_id) || {}).icon || '')} ${esc(nameOf(A.ref.cats, s.category_id))}</b>
-            ${s.is_available ? '' : '<span class="badge minor">Not offered at this Hub · unmet need</span>'}
-            <span style="margin-left:auto">${statusChip(s.status)}</span></div>
-          ${editable ? `<div class="two fld">
-            <div><label class="lb">Status</label><select class="i" data-f="status">${opts(Object.entries(STATUS).map(([k, x]) => ({ id: k, name: x.label })), s.status)}</select></div>
-            <div><label class="lb">Assisted by</label><select class="i" data-f="assigned_member_id">${opts(staff, s.assigned_member_id, 'Not assigned', m => m.full_name)}</select></div>
-            <div><label class="lb">Programme</label><select class="i" data-f="programme_id">${opts(progs, s.programme_id, 'No programme')}</select></div>
-            <div><label class="lb">Follow-up date</label><input class="i" type="date" data-f="follow_up_date" value="${esc(s.follow_up_date || '')}"></div>
-            <div style="grid-column:1/-1"><label class="lb">Service provided</label><input class="i" data-f="service_provided" value="${esc(s.service_provided || '')}" placeholder="What was done for the visitor"></div>
-            <div><label class="lb">Referred to (external organisation)</label><input class="i" data-f="referral_org" list="reforgs" value="${esc(s.referral_org || '')}"></div>
-            <div><label class="lb">Request resolved?</label><select class="i" data-f="resolved">${opts([{ id: 'true', name: 'Yes' }, { id: 'false', name: 'No' }], s.resolved == null ? '' : String(s.resolved), 'Not yet')}</select></div>
-          </div>
-          <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn sm" data-save="${s.id}">Save service</button></div>` :
-          `<div class="muted" style="font-size:13.5px">${esc(s.service_provided || '')}</div>`}
-        </div>`).join('')}
-    </div>
-    <datalist id="reforgs">${['SEDA', 'SEFA', 'SASSA', 'NYDA', 'Department of Employment & Labour', 'Legal Aid SA', 'Local clinic', 'Home Affairs'].map(x => `<option value="${x}">`).join('')}</datalist>
-    ${editable ? `<div class="row" style="margin-top:10px"><select class="i" id="addcat">${opts(A.ref.cats.filter(c => c.active && !(v.visit_services || []).some(s => s.category_id === c.id)), '', 'Add another service…')}</select><button class="btn sm sec" id="addsvc">Add</button></div>` : ''}
+    <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h3 style="margin:0">Services</h3>
+        ${editable ? `<button class="btn sm ${pending ? '' : 'sec'}" id="recSvc">${pending ? 'Record services' : 'Edit services'}</button>` : ''}</div>
+      <div class="timeline">${svcs.map(s => `<div class="svcline">
+          <div>${chip(outcome(s.status), outcomeColour(s.status))}</div>
+          <div><b>${esc((byId(A.ref.cats, s.category_id) || {}).icon || '')} ${esc(nameOf(A.ref.cats, s.category_id))}</b>${s.referral_org ? ' → ' + esc(s.referral_org) : ''}${s.follow_up_date ? ' · follow up ' + fmtDate(s.follow_up_date) : ''}
+            ${s.service_provided ? `<div class="muted" style="font-size:13px">${esc(s.service_provided)}</div>` : ''}
+            ${s.assigned_member_id && !isPending(s) ? `<div class="faint" style="font-size:12px">by ${esc(memberName(s.assigned_member_id))}</div>` : ''}</div></div>`).join('') || '<div class="faint">No services recorded.</div>'}</div>
     </div>
 
     <div class="card"><h3>Visitor feedback</h3>
@@ -699,61 +689,33 @@ function renderVisit(d, v, notes, history) {
         <span class="muted">Assisted: ${esc(fbk.assisted || '–')} · Staff helpful: ${esc(fbk.staff_helpful || '–')} · Would return: ${esc(fbk.visit_again || '–')}</span></div>
         ${fbk.improve ? `<div class="note" style="margin-top:8px">Improve: ${esc(fbk.improve)}</div>` : ''}
         ${fbk.additional_needs ? `<div class="note" style="margin-top:8px">Other needs: ${esc(fbk.additional_needs)}</div>` : ''}`
-      : `<div class="sub">Once the service is delivered, ask the visitor for 30 seconds of feedback.</div>
-        <div class="row"><button class="btn sm" id="fbOpen">Open feedback on this device</button><button class="btn sm sec" id="fbCopy">Copy feedback link</button>
-        <span class="faint" style="font-size:12.5px">Or the visitor taps <b>Give feedback</b> on the kiosk and enters their mobile number (or ticket <b>${esc(v.ticket_no)}</b> + last 4 digits).</span></div>`}
+      : `<div class="sub">No feedback yet. The visitor can tap <b>Give feedback</b> on the kiosk and enter their mobile number, or you can hand them this device.</div>
+        <div class="row"><button class="btn sm sec" id="fbOpen">Hand over this device for feedback</button><button class="btn sm sec" id="fbCopy">Copy feedback link</button></div>`}
     </div>
 
-    <div class="card"><h3>Notes</h3><div class="sub">Interaction notes are visible to staff with access to this Hub.</div>
+    <div class="card"><h3>Notes</h3><div class="sub">Only seen by staff with access to this Hub.</div>
       <div class="timeline">${notes.map(n => `<div class="tl"><div class="d">${fmtDate(n.created_at)}<br>${fmtTime(n.created_at)}</div><div><b>${esc(memberName(n.member_id))}</b><br>${esc(n.note)}</div></div>`).join('') || '<div class="faint">No notes yet.</div>'}</div>
-      ${editable ? `<textarea class="i" id="note" placeholder="Add a note about this interaction" style="margin-top:12px"></textarea>
+      ${editable ? `<textarea class="i" id="note" placeholder="Add a note about this visitor" style="margin-top:12px"></textarea>
       <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn sm" id="addnote">Add note</button></div>` : ''}
     </div>
 
-    <div class="card"><h3>Beneficiary journey</h3><div class="sub">${history.length} visit${history.length === 1 ? '' : 's'} since ${fmtDate(vi.created_at)}</div>
+    <div class="card"><h3>Visit history</h3><div class="sub">${history.length} visit${history.length === 1 ? '' : 's'} since ${fmtDate(vi.created_at)}</div>
       <div class="timeline">${history.map(h => `<div class="tl"><div class="d">${fmtDate(h.visited_at)}</div><div>
-        <div style="font-weight:600">${esc(nameOf(A.ref.hubs, h.hub_id))}${h.id === v.id ? ' <span class="badge">This visit</span>' : ''}</div>
-        <div>${(h.visit_services || []).map(s => chip(nameOf(A.ref.cats, s.category_id) + (s.referral_org ? ' → ' + s.referral_org : ''), STATUS[s.status].c)).join('')}</div></div></div>`).join('')}</div>
+        <div style="font-weight:600">${h.id === v.id ? esc(nameOf(A.ref.hubs, h.hub_id)) + ' <span class="badge">This visit</span>' : `<a href="#" data-visit="${h.id}">${esc(nameOf(A.ref.hubs, h.hub_id))}</a>`}</div>
+        <div>${(h.visit_services || []).map(s => chip(nameOf(A.ref.cats, s.category_id) + (s.referral_org ? ' → ' + s.referral_org : ''), outcomeColour(s.status))).join('')}</div></div></div>`).join('')}</div>
     </div>
   </div>`;
 
-  const refresh = () => openVisit(v.id).then(() => A.view === 'queue' && loadQueue(false));
-  d.querySelectorAll('[data-save]').forEach(b => b.onclick = async () => {
-    const box = d.querySelector(`[data-sid="${b.dataset.save}"]`);
-    const upd = { updated_by: A.m.member_id };
-    box.querySelectorAll('[data-f]').forEach(el => { let val = el.value; if (el.dataset.f === 'resolved') val = val === '' ? null : val === 'true'; else if (val === '') val = null; upd[el.dataset.f] = val; });
-    if (upd.status === 'referred' && !upd.referral_org) return toast('Enter the organisation the visitor was referred to', true);
-    if (['completed', 'referred'].includes(upd.status) && upd.resolved == null) upd.resolved = true;
-    if (upd.status === 'unable' && upd.resolved == null) upd.resolved = false;
-    if (!upd.assigned_member_id && upd.status !== 'awaiting') upd.assigned_member_id = A.m.member_id;
-    try { await q(sb.from('visit_services').update(upd).eq('id', b.dataset.save)); toast('Service updated'); refresh(); } catch (e) { fail(e); }
-  });
-  const bulk = async (from, to) => {
-    const ids = (v.visit_services || []).filter(s => from.includes(s.status) && s.is_available).map(s => s.id);
-    if (!ids.length) return toast('Nothing to update');
-    const upd = { status: to, assigned_member_id: A.m.member_id, updated_by: A.m.member_id };
-    if (to === 'completed') upd.resolved = true;
-    try {
-      await q(sb.from('visit_services').update(upd).in('id', ids));
-      if (to === 'in_progress') await q(sb.from('visits').update({ assigned_member_id: A.m.member_id }).eq('id', v.id));
-      toast(to === 'completed' ? 'Marked completed' : 'You are now helping this visitor'); refresh();
-    } catch (e) { fail(e); }
-  };
-  if ($('startAll')) $('startAll').onclick = () => bulk(['awaiting'], 'in_progress');
-  if ($('doneAll')) $('doneAll').onclick = () => bulk(['awaiting', 'in_progress', 'follow_up'], 'completed');
-  if ($('addsvc')) $('addsvc').onclick = async () => {
-    const c = $('addcat').value; if (!c) return;
-    const avail = A.ref.hubSvc.some(h => h.hub_id === v.hub_id && h.category_id === c);
-    const prog = A.ref.progs.find(p => p.category_id === c && p.active);
-    try { await q(sb.from('visit_services').insert({ org_id: v.org_id, visit_id: v.id, category_id: c, is_available: avail, status: avail ? 'awaiting' : 'unable', programme_id: avail && prog ? prog.id : null })); refresh(); } catch (e) { fail(e); }
-  };
+  const refresh = () => openVisit(v.id);
+  if ($('recSvc')) $('recSvc').onclick = () => recordVisit(v.id, refresh);
+  d.querySelectorAll('[data-visit]').forEach(a => a.onclick = e => { e.preventDefault(); openVisit(a.dataset.visit); });
   if ($('addnote')) $('addnote').onclick = async () => {
     const t = $('note').value.trim(); if (!t) return;
     try { await q(sb.from('visit_notes').insert({ org_id: v.org_id, visit_id: v.id, member_id: A.m.member_id, note: t })); refresh(); } catch (e) { fail(e); }
   };
   const fbUrl = new URL('kiosk.html?fb=' + v.feedback_token, location.href).href;
   if ($('fbOpen')) $('fbOpen').onclick = () => window.open(fbUrl, '_blank');
-  if ($('fbCopy')) $('fbCopy').onclick = () => navigator.clipboard.writeText(fbUrl).then(() => toast('Feedback link copied — send it to the visitor\'s phone'));
+  if ($('fbCopy')) $('fbCopy').onclick = () => navigator.clipboard.writeText(fbUrl).then(() => toast('Feedback link copied — you can send it to the visitor\'s phone'));
 }
 
 /* ---------- walk-in registration ---------- */
