@@ -102,6 +102,23 @@
   .qcard:hover { border-color:#bcd3d0; box-shadow:0 6px 18px -12px rgba(0,0,0,.25); }
   .qcard .tk { width:54px; height:54px; border-radius:12px; background:var(--brand-soft); color:var(--brand); font-weight:800; font-size:20px; display:grid; place-items:center; flex:none; }
   .qcard .nm { font-weight:700; font-size:15.5px; }
+  .qcard.done { opacity:.75; }
+  .qcard.done .tk { background:#e7f6ec; color:#067647; }
+  .qsec { margin-bottom:22px; }
+  .qsec h3 { margin:0 0 4px; font-size:15px; }
+  .qsec .sub { font-size:12.5px; color:var(--muted); margin-bottom:10px; }
+  .linkbtn { background:none; border:0; padding:4px 0; color:var(--brand); font-weight:700; cursor:pointer; font-size:14px; }
+  .recvis { display:flex; gap:12px; align-items:center; margin-top:12px; }
+  .recvis .tk { width:46px; height:46px; border-radius:12px; background:var(--brand-soft); color:var(--brand); font-weight:800; display:grid; place-items:center; flex:none; }
+  .outcomes { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:6px; }
+  .oc { border:1.5px solid var(--line); background:#fff; border-radius:10px; padding:10px 6px; font-weight:700; font-size:13.5px; cursor:pointer; display:flex; gap:6px; align-items:center; justify-content:center; color:var(--ink); }
+  .oc span { font-size:15px; }
+  .oc.on { color:#fff; border-color:transparent; }
+  .oc.on.completed { background:#067647; } .oc.on.referred { background:#6250d6; } .oc.on.follow_up { background:#c4541f; } .oc.on.unable { background:#b42318; }
+  .addchips { display:flex; flex-wrap:wrap; gap:6px; }
+  .addchip { border:1.5px dashed #c3d3d0; background:#fafcfb; border-radius:999px; padding:6px 12px; font-weight:600; font-size:13px; cursor:pointer; color:var(--ink); }
+  .addchip:hover { border-color:var(--brand); color:var(--brand); }
+  @media (max-width:700px){ .outcomes{grid-template-columns:repeat(2,1fr)} }
   .qcard .meta { font-size:12.5px; color:var(--muted); margin:2px 0 6px; }
   .empty { text-align:center; padding:48px 20px; color:var(--muted); background:#fff; border:1px dashed var(--line); border-radius:14px; }
   .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:center; background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px; margin-bottom:16px; }
@@ -403,7 +420,7 @@ function myHubs() {
    SHELL & NAVIGATION
    ===================================================================== */
 const VIEWS = [
-  { k: 'queue', t: 'Service Queue', ic: '🛎️', roles: STAFF },
+  { k: 'queue', t: "Today's Visitors", ic: '👋', roles: STAFF },
   { k: 'visitors', t: 'Visitors', ic: '👥', roles: STAFF },
   { k: 'dashboard', t: 'Dashboard', ic: '📊', roles: ['super_admin', 'management', 'hub_manager', 'programme_manager'] },
   { k: 'donor', t: 'Donor Impact', ic: '💚', roles: ['super_admin', 'management', 'hub_manager', 'programme_manager', 'donor_viewer'] },
@@ -450,15 +467,17 @@ const VISIT_SELECT = 'id, org_id, hub_id, visitor_id, ticket_no, visited_at, is_
   'visit_services(id, category_id, status, is_available, programme_id, assigned_member_id, service_provided, referral_org, resolved, follow_up_date, updated_at), feedback(id, rating, assisted, staff_helpful, visit_again, improve, additional_needs, created_at)';
 const fbOf = v => Array.isArray(v.feedback) ? v.feedback[0] : v.feedback;
 
-const QS = { hub: '', tab: 'awaiting' };
+const QS = { hub: '', showDone: false };
+const isPending = s => s.is_available && (s.status === 'awaiting' || s.status === 'in_progress');
+const initialsOf = n => (n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
 async function vQueue() {
   const hubs = myHubs();
   if (QS.hub && !hubs.find(h => h.id === QS.hub)) QS.hub = '';
   if (!QS.hub && hubs.length === 1) QS.hub = hubs[0].id;
   $('tools').innerHTML = `
     <select class="i" id="qhub">${opts(hubs, QS.hub, hubs.length > 1 ? 'All my hubs' : null)}</select>
-    <label class="row" style="gap:6px;font-size:13px;color:var(--muted)"><input type="checkbox" id="qsound" ${A.sound ? 'checked' : ''}> Sound alert</label>
-    <button class="btn" id="walkin">+ Walk-in registration</button>`;
+    <label class="row" style="gap:6px;font-size:13px;color:var(--muted)"><input type="checkbox" id="qsound" ${A.sound ? 'checked' : ''}> Sound when someone signs in</label>
+    <button class="btn" id="walkin">+ Add a visitor</button>`;
   $('qhub').onchange = e => { QS.hub = e.target.value; loadQueue(true); };
   $('qsound').onchange = e => { A.sound = e.target.checked; if (A.sound) beep(); };
   $('walkin').onclick = () => walkIn();
@@ -473,42 +492,136 @@ async function loadQueue(first) {
   const since = new Date(Date.now() - 30 * 864e5).toISOString();
   const startToday = new Date(today() + 'T00:00:00+02:00').toISOString();
   const rows = await q(sb.from('visits').select(VISIT_SELECT).eq('org_id', A.m.org_id).in('hub_id', hubIds)
-    .or(`status.neq.closed,visited_at.gte.${startToday}`).gte('visited_at', since).order('visited_at', { ascending: true }).limit(500));
-  const tabs = {
-    awaiting: rows.filter(v => v.status === 'awaiting'),
-    in_progress: rows.filter(v => v.status === 'in_progress'),
-    follow_up: rows.filter(v => v.status === 'follow_up'),
-    closed: rows.filter(v => v.status === 'closed').reverse()
-  };
-  // new arrivals
-  const newOnes = tabs.awaiting.filter(v => !A.seen.has(v.id));
-  tabs.awaiting.forEach(v => A.seen.add(v.id));
-  if (!first && newOnes.length) { newOnes.forEach(v => toast(`New visitor at ${nameOf(A.ref.hubs, v.hub_id)} — ticket ${v.ticket_no}`)); if (A.sound) beep(); }
-  const ct = $('qct'); if (ct) { ct.textContent = tabs.awaiting.length; ct.classList.toggle('hidden', !tabs.awaiting.length); }
+    .gte('visited_at', since).order('visited_at', { ascending: false }).limit(500));
+  const waiting = rows.filter(v => (v.visit_services || []).some(isPending));
+  const waitToday = waiting.filter(v => v.visited_at >= startToday), waitEarlier = waiting.filter(v => v.visited_at < startToday);
+  const doneToday = rows.filter(v => v.visited_at >= startToday && !(v.visit_services || []).some(isPending));
+  const followUps = rows.filter(v => !(v.visit_services || []).some(isPending) && (v.visit_services || []).some(x => x.status === 'follow_up'));
+  // new sign-ins
+  const fresh = waiting.filter(v => !A.seen.has(v.id));
+  waiting.forEach(v => A.seen.add(v.id));
+  if (!first && fresh.length) { fresh.forEach(v => toast(`${(v.visitor || {}).full_name || 'A visitor'} has signed in at ${nameOf(A.ref.hubs, v.hub_id)}`)); if (A.sound) beep(); }
+  const ct = $('qct'); if (ct) { ct.textContent = waiting.length; ct.classList.toggle('hidden', !waiting.length); }
   if (A.view !== 'queue') return;
-  const list = tabs[QS.tab];
+  const section = (title, sub, list, kind) => `<div class="qsec"><h3>${title} <span class="faint" style="font-weight:600">${list.length}</span></h3>${sub ? `<div class="sub">${sub}</div>` : ''}
+      <div class="qgrid">${list.map(v => qCard(v, kind)).join('')}</div></div>`;
   $('page').innerHTML = `
-    <div class="tabs">${[['awaiting', 'Waiting'], ['in_progress', 'In progress'], ['follow_up', 'Follow-up'], ['closed', 'Completed today']]
-      .map(([k, l]) => `<button class="tab ${QS.tab === k ? 'on' : ''}" data-t="${k}">${l}<span class="n">${tabs[k].length}</span></button>`).join('')}
-      <span class="faint" style="margin-left:auto;font-size:12.5px;align-self:center">Refreshes every 20 seconds</span></div>
-    ${list.length ? `<div class="qgrid">${list.map(qCard).join('')}</div>` :
-      `<div class="empty">${QS.tab === 'awaiting' ? 'Nobody is waiting right now. New kiosk registrations appear here automatically.' : 'Nothing here.'}</div>`}`;
-  document.querySelectorAll('.tab').forEach(b => b.onclick = () => { QS.tab = b.dataset.t; loadQueue(false); });
-  document.querySelectorAll('.qcard').forEach(c => c.onclick = () => openVisit(c.dataset.id));
+    <div class="note" style="margin-bottom:16px">Click a visitor's name to record the services you provided. Once saved, they move off this list.<span class="faint" style="float:right">Updates every 20 seconds</span></div>
+    ${waitToday.length ? section('Signed in today', '', waitToday, 'wait') : `<div class="empty" style="margin-bottom:18px">Nobody is waiting right now. When someone signs in on the kiosk, their name appears here.</div>`}
+    ${waitEarlier.length ? section('Still to record from earlier days', 'These visitors signed in on a previous day but their services were never recorded.', waitEarlier, 'wait') : ''}
+    ${followUps.length ? section('Follow-ups', 'Recorded, but marked as needing a follow-up.', followUps, 'follow') : ''}
+    <div class="qsec"><button class="linkbtn" id="toggleDone">${QS.showDone ? '▾' : '▸'} Recorded today (${doneToday.length})</button>
+      ${QS.showDone ? (doneToday.length ? `<div class="qgrid" style="margin-top:10px">${doneToday.map(v => qCard(v, 'done')).join('')}</div>` : '<div class="faint" style="margin-top:8px">Nothing recorded yet today.</div>') : ''}</div>`;
+  $('toggleDone').onclick = () => { QS.showDone = !QS.showDone; loadQueue(false); };
+  document.querySelectorAll('.qcard').forEach(c => c.onclick = () => recordVisit(c.dataset.id));
 }
 
-function qCard(v) {
+function qCard(v, kind) {
   const vi = v.visitor || {};
-  return `<div class="qcard" data-id="${v.id}">
-    <div class="tk">${esc(v.ticket_no || '–')}</div>
+  const svcs = (v.visit_services || []).filter(s => s.is_available);
+  return `<div class="qcard ${kind === 'done' ? 'done' : ''}" data-id="${v.id}">
+    <div class="tk">${kind === 'done' ? '✓' : esc(initialsOf(vi.full_name))}</div>
     <div style="min-width:0;flex:1">
       <div class="row" style="gap:6px"><span class="nm">${esc(vi.full_name)}</span>
         ${v.is_first_visit ? '<span class="badge new">First visit</span>' : '<span class="badge grey">Returning</span>'}
         ${vi.is_minor ? '<span class="badge minor">Under 18</span>' : ''}</div>
-      <div class="meta">${esc(nameOf(A.ref.hubs, v.hub_id))} · ${ago(v.visited_at)}${v.assigned_member_id ? ' · ' + esc(memberName(v.assigned_member_id)) : ''}</div>
-      <div>${(v.visit_services || []).map(s => chip(nameOf(A.ref.cats, s.category_id), STATUS[s.status].c)).join('')}</div>
+      <div class="meta">${esc(nameOf(A.ref.hubs, v.hub_id))} · signed in ${fmtTime(v.visited_at)}${v.visited_at < new Date(today() + 'T00:00:00+02:00').toISOString() ? ' on ' + fmtDate(v.visited_at) : ''}</div>
+      <div>${svcs.map(s => chip(nameOf(A.ref.cats, s.category_id), kind === 'wait' && isPending(s) ? 'var(--st-awaiting)' : STATUS[s.status].c)).join('')}</div>
       ${v.need_description ? `<div class="faint" style="font-size:12.5px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">“${esc(v.need_description)}”</div>` : ''}
     </div></div>`;
+}
+
+/* ---------- record services (simple form for Community Liaison Officers) ---------- */
+const OUTCOMES = [
+  { k: 'completed', l: 'Provided', ic: '✓' },
+  { k: 'referred', l: 'Referred', ic: '↗' },
+  { k: 'follow_up', l: 'Follow-up needed', ic: '⟳' },
+  { k: 'unable', l: "Couldn't help", ic: '✕' }
+];
+async function recordVisit(id) {
+  let v;
+  try { v = await q(sb.from('visits').select(VISIT_SELECT).eq('id', id).single()); } catch (e) { return fail(e); }
+  const vi = v.visitor || {};
+  const first = (vi.full_name || '').split(' ')[0];
+  const existing = (v.visit_services || []).filter(s => s.is_available);
+  const unmet = (v.visit_services || []).filter(s => !s.is_available);
+  const offered = A.ref.cats.filter(c => c.active && A.ref.hubSvc.some(h => h.hub_id === v.hub_id && h.category_id === c.id));
+  // working state: one row per service
+  const rows = existing.map(s => ({ id: s.id, category_id: s.category_id, outcome: isPending(s) ? 'completed' : s.status, provided: s.service_provided || '', referral: s.referral_org || '', follow: s.follow_up_date || '', programme_id: s.programme_id }));
+  const draw = () => {
+    const body = $('rec_body'); if (!body) return;
+    body.innerHTML = rows.map((r, i) => `
+      <div class="svc recrow">
+        <div class="hd"><b>${esc((byId(A.ref.cats, r.category_id) || {}).icon || '')} ${esc(nameOf(A.ref.cats, r.category_id))}</b>${r.id ? '' : '<span class="badge">Added</span>'}
+          ${r.id ? '' : `<button class="linkbtn" data-rm="${i}" style="margin-left:auto">Remove</button>`}</div>
+        <div class="outcomes">${OUTCOMES.map(o => `<button type="button" class="oc ${r.outcome === o.k ? 'on ' + o.k : ''}" data-i="${i}" data-o="${o.k}"><span>${o.ic}</span>${o.l}</button>`).join('')}</div>
+        ${r.outcome === 'referred' ? `<label class="lb">Referred to which organisation?</label><input class="i" style="width:100%" list="reforgs" data-f="referral" data-i="${i}" value="${esc(r.referral)}" placeholder="e.g. SEDA, SASSA, Home Affairs">` : ''}
+        ${r.outcome === 'follow_up' ? `<label class="lb">Follow up on</label><input class="i" type="date" data-f="follow" data-i="${i}" value="${esc(r.follow)}">` : ''}
+        <label class="lb">What did you do? <span class="faint" style="font-weight:500">(optional)</span></label>
+        <input class="i" style="width:100%" data-f="provided" data-i="${i}" value="${esc(r.provided)}" placeholder="${r.outcome === 'unable' ? 'Why could we not help?' : 'e.g. Helped write and print a CV'}">
+      </div>`).join('') || '<div class="faint">No services yet. Add the service you provided below.</div>';
+    body.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { rows[+b.dataset.i].outcome = b.dataset.o; draw(); });
+    body.querySelectorAll('[data-f]').forEach(el => el.oninput = () => { rows[+el.dataset.i][el.dataset.f] = el.value; });
+    body.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { rows.splice(+b.dataset.rm, 1); draw(); drawAdd(); });
+  };
+  const drawAdd = () => {
+    const el = $('rec_add'); if (!el) return;
+    const left = offered.filter(c => !rows.some(r => r.category_id === c.id));
+    el.innerHTML = left.length ? left.map(c => `<button type="button" class="addchip" data-add="${c.id}">+ ${esc(c.icon || '')} ${esc(c.name)}</button>`).join('') : '<span class="faint">All services added.</span>';
+    el.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
+      const p = A.ref.progs.find(x => x.category_id === b.dataset.add && x.active);
+      rows.push({ id: null, category_id: b.dataset.add, outcome: 'completed', provided: '', referral: '', follow: '', programme_id: p ? p.id : null });
+      draw(); drawAdd();
+    });
+  };
+  const w = modal(`Record services for ${vi.full_name || 'visitor'}`, `
+    <div class="recvis">
+      <div class="tk">${esc(initialsOf(vi.full_name))}</div>
+      <div><div class="row" style="gap:6px"><b style="font-size:16px">${esc(vi.full_name)}</b>${v.is_first_visit ? '<span class="badge new">First visit</span>' : '<span class="badge grey">Returning</span>'}${vi.is_minor ? '<span class="badge minor">Under 18</span>' : ''}</div>
+        <div class="muted" style="font-size:13px">${esc(vi.community || '')}${vi.age_group ? ' · ' + esc(vi.age_group) : ''} · ${esc(nameOf(A.ref.hubs, v.hub_id))} · signed in ${fmtTime(v.visited_at)}${v.visited_at < new Date(today() + 'T00:00:00+02:00').toISOString() ? ' on ' + fmtDate(v.visited_at) : ''}</div></div>
+      <button class="linkbtn" id="rec_hist" style="margin-left:auto">Visit history</button>
+    </div>
+    ${v.need_description ? `<div class="note" style="margin-top:12px"><b>${esc(first)} said:</b> “${esc(v.need_description)}”</div>` : ''}
+    ${unmet.length ? `<div class="note warn" style="margin-top:8px">Also asked for (not offered at this Hub — recorded as an unmet need): ${unmet.map(s => esc(nameOf(A.ref.cats, s.category_id))).join(', ')}</div>` : ''}
+    <h4 style="margin:18px 0 8px">What help did ${esc(first)} get?</h4>
+    <div id="rec_body" class="grid" style="gap:10px"></div>
+    <label class="lb" style="margin-top:16px">Did you also help with something else?</label><div id="rec_add" class="addchips"></div>
+    <label class="lb" style="margin-top:16px">Note <span class="faint" style="font-weight:500">(optional, only seen by staff)</span></label>
+    <textarea class="i" id="rec_note" placeholder="Anything the team should know for next time"></textarea>
+    <datalist id="reforgs">${['SEDA', 'SEFA', 'SASSA', 'NYDA', 'Department of Employment & Labour', 'Legal Aid SA', 'Local clinic', 'Home Affairs'].map(x => `<option value="${x}">`).join('')}</datalist>`,
+  { wide: true, saveLabel: 'Save', save: async () => {
+    if (!rows.length) { toast('Add at least one service you provided', true); return false; }
+    const bad = rows.find(r => r.outcome === 'referred' && !r.referral.trim());
+    if (bad) { toast(`Enter where ${nameOf(A.ref.cats, bad.category_id)} was referred to`, true); return false; }
+    // services removed from the request list are not deleted — only newly added ones can be removed before saving
+    for (const r of rows) {
+      const upd = { status: r.outcome, service_provided: r.provided.trim() || null, referral_org: r.outcome === 'referred' ? r.referral.trim() : null,
+                    follow_up_date: r.outcome === 'follow_up' ? (r.follow || null) : null, resolved: r.outcome === 'completed' || r.outcome === 'referred' ? true : r.outcome === 'unable' ? false : null,
+                    assigned_member_id: A.m.member_id, updated_by: A.m.member_id };
+      if (r.id) await q(sb.from('visit_services').update(upd).eq('id', r.id));
+      else await q(sb.from('visit_services').insert(Object.assign({ org_id: v.org_id, visit_id: v.id, category_id: r.category_id, is_available: true, programme_id: r.programme_id }, upd)));
+    }
+    await q(sb.from('visits').update({ assigned_member_id: A.m.member_id }).eq('id', v.id));
+    const note = $('rec_note').value.trim();
+    if (note) await q(sb.from('visit_notes').insert({ org_id: v.org_id, visit_id: v.id, member_id: A.m.member_id, note }));
+    loadQueue(false).catch(() => {});
+    if (!fbOf(v)) afterRecord(v); else toast(`Saved — ${first} has been removed from the list`);
+  } });
+  draw(); drawAdd();
+  $('rec_hist').onclick = () => { w.remove(); openVisit(v.id); };
+}
+
+function afterRecord(v) {
+  const vi = v.visitor || {}; const first = (vi.full_name || 'the visitor').split(' ')[0];
+  const fbUrl = new URL('kiosk.html?fb=' + v.feedback_token, location.href).href;
+  const m = modal('Saved', `<div style="text-align:center;padding:10px 0 4px">
+      <div style="font-size:42px">✅</div>
+      <p style="font-size:16px;margin:8px 0 4px"><b>${esc(first)}'s</b> services are recorded and they have been removed from the list.</p>
+      <p class="muted" style="margin:0 0 16px">Would ${esc(first)} like to give quick feedback? It takes under a minute.</p>
+      <div class="row" style="justify-content:center"><button class="btn" id="fbHere">Hand over this device for feedback</button></div>
+      <p class="faint" style="font-size:12.5px;margin-top:12px">Or ${esc(first)} can tap <b>Give feedback</b> on the kiosk and enter their mobile number.</p></div>`);
+  m.querySelector('[data-close]').textContent = 'Done';
+  m.querySelector('#fbHere').onclick = () => { window.open(fbUrl, '_blank'); m.remove(); };
 }
 
 function beep() { try { const c = new (window.AudioContext || window.webkitAudioContext)(); const o = c.createOscillator(); const g = c.createGain(); o.frequency.value = 880; g.gain.value = .08; o.connect(g); g.connect(c.destination); o.start(); setTimeout(() => { o.frequency.value = 1175; }, 150); setTimeout(() => { o.stop(); c.close(); }, 320); } catch (e) {} }
@@ -646,10 +759,10 @@ function renderVisit(d, v, notes, history) {
 /* ---------- walk-in registration ---------- */
 function walkIn() {
   const hubs = myHubs().filter(h => can(MANAGERS) || (A.m.hub_ids || []).includes(h.id));
-  if (!hubs.length) return toast('You need to be assigned to a Hub to register walk-ins', true);
+  if (!hubs.length) return toast('You need to be assigned to a Hub to add visitors', true);
   const st = { services: new Set() };
-  const w = modal('Walk-in registration', `
-    <div class="note" style="margin-top:12px">Use this when a visitor can't use the tablet. Read the privacy notice to them and record their consent.</div>
+  const w = modal('Add a visitor', `
+    <div class="note" style="margin-top:12px">Use this when someone can't use the tablet. Read the privacy notice to them and record their consent.</div>
     <div class="fld grid g2" style="gap:0 14px">
       <div><label class="lb">Hub</label><select class="i" id="w_hub">${opts(hubs, QS.hub || hubs[0].id)}</select></div>
       <div><label class="lb">Mobile number</label><input class="i" id="w_mobile" inputmode="tel" placeholder="082 123 4567"></div>
@@ -663,7 +776,7 @@ function walkIn() {
     <label class="lb">What assistance do they need? (optional)</label><textarea class="i" id="w_need"></textarea>
     <label class="row" style="margin-top:12px;gap:8px"><input type="checkbox" id="w_consent"> The visitor heard the privacy notice and gave consent</label>
     <label class="row hidden" style="margin-top:8px;gap:8px" id="w_gwrap"><input type="checkbox" id="w_guardian"> A parent/guardian is present and gave consent (under 18)</label>`,
-    { saveLabel: 'Register visitor', save: async () => {
+    { saveLabel: 'Add visitor', save: async () => {
       const hub = $('w_hub').value;
       const avail = A.ref.cats.filter(c => c.active && A.ref.hubSvc.some(h => h.hub_id === hub && h.category_id === c.id)).map(c => c.id);
       const chosen = [...w.querySelectorAll('#w_svcs input:checked')].map(i => i.value);
@@ -671,7 +784,7 @@ function walkIn() {
                   community: $('w_comm').value, consent: $('w_consent').checked, guardian_consent: $('w_guardian').checked, need_description: $('w_need').value,
                   services: chosen.filter(c => avail.includes(c)), unmet: chosen.filter(c => !avail.includes(c)) };
       const r = await q(sb.rpc('staff_register', { p_hub: hub, p }));
-      toast(`Registered — ticket ${r.ticket}${r.returning ? ' (returning visitor)' : ''}`);
+      toast(`${p.full_name.trim().split(' ')[0] || 'Visitor'} added${r.returning ? ' (returning visitor)' : ''}`);
       if (A.view === 'queue') loadQueue(false);
     } });
   const drawSvcs = () => {
@@ -689,7 +802,7 @@ function walkIn() {
    VISITORS
    ===================================================================== */
 async function vVisitors() {
-  $('tools').innerHTML = `<input class="i" id="vs" placeholder="Search name or mobile…" style="width:260px"><button class="btn" id="walkin2">+ Walk-in registration</button>`;
+  $('tools').innerHTML = `<input class="i" id="vs" placeholder="Search name or mobile…" style="width:260px"><button class="btn" id="walkin2">+ Add a visitor</button>`;
   $('walkin2').onclick = () => walkIn();
   const run = async () => {
     const term = $('vs').value.trim().replace(/[,()*%]/g, ' ').trim();

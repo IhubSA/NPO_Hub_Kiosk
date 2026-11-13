@@ -479,9 +479,9 @@
     const first = s.name.trim().split(/\s+/)[0];
     chrome();
     $app.innerHTML = `<div class="done">
-        ${s.ticket ? `<div class="ticketcard"><small>Your ticket number</small><div class="num">${esc(s.ticket)}</div></div>` : '<div class="tick">✓</div>'}
-        <h1>Thank you, ${esc(first)}!</h1>
-        <p>${s.ticket ? 'Please take a seat. A staff member will call your ticket number shortly.<br><br>After you have been helped, come back to this screen and tap <b>Give feedback</b>. You will only need your mobile number.' : 'You are signed in. We are offline at the moment, so please tell the staff member at the desk your name.'}</p>
+        <div class="tick">✓</div>
+        <h1>Thank you, ${esc(first)}! You're signed in.</h1>
+        <p>${s.offline ? 'We are offline at the moment, so please also tell a staff member your name.' : 'Please take a seat. A staff member will be with you shortly.'}<br><br>After you have been helped, come back to this screen and tap <b>Give feedback</b>. You will only need your mobile number.</p>
         <button class="whitebtn" id="fin">Done</button>
         <div class="countdown">Returning to the start screen in <b id="cd">15</b> seconds</div></div>`;
     bind('fin', 'click', reset);
@@ -496,7 +496,7 @@
       panel({ title: 'Give feedback', lead: 'Enter the mobile number you used when you signed in today.', back: 'Cancel', next: s.busy ? 'Looking…' : 'Continue', nextDisabled: s.busy, steps: false,
         body: `<div class="two"><div><label class="f" style="margin-top:4px">Your mobile number</label>
           <div class="display on" id="fbm">${d ? esc(fmtMobile(d)) : '<span class="ph">082 123 4567</span>'}</div>
-          <button class="altlink" id="useticket">I'd rather use my ticket number</button></div><div>${keypadHtml()}</div></div>` });
+</div><div>${keypadHtml()}</div></div>` });
       bindKeypad(() => fb.mobile, v => fb.mobile = v, 10, () => { const el = document.getElementById('fbm'); el.innerHTML = fb.mobile ? esc(fmtMobile(fb.mobile)) : '<span class="ph">082 123 4567</span>'; });
       bind('useticket', 'click', () => { fb.mode = 'ticket'; fb.field = 'ticket'; s.error = ''; rFbFind(); });
       bind('back', 'click', reset);
