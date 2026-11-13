@@ -588,7 +588,7 @@ function renderVisit(d, v, notes, history) {
         ${fbk.additional_needs ? `<div class="note" style="margin-top:8px">Other needs: ${esc(fbk.additional_needs)}</div>` : ''}`
       : `<div class="sub">Once the service is delivered, ask the visitor for 30 seconds of feedback.</div>
         <div class="row"><button class="btn sm" id="fbOpen">Open feedback on this device</button><button class="btn sm sec" id="fbCopy">Copy feedback link</button>
-        <span class="faint" style="font-size:12.5px">Or the visitor can use the kiosk with ticket <b>${esc(v.ticket_no)}</b> + last 4 digits of their mobile.</span></div>`}
+        <span class="faint" style="font-size:12.5px">Or the visitor taps <b>Give feedback</b> on the kiosk and enters their mobile number (or ticket <b>${esc(v.ticket_no)}</b> + last 4 digits).</span></div>`}
     </div>
 
     <div class="card"><h3>Notes</h3><div class="sub">Interaction notes are visible to staff with access to this Hub.</div>
