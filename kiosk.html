@@ -203,12 +203,14 @@
   const qs = new URLSearchParams(location.search);
   if (qs.get('k')) LS.set(K_TOKEN, qs.get('k'));
   const fbToken = qs.get('fb');
+  const wantSetup = qs.has('setup');
   if (qs.toString()) history.replaceState(null, '', location.pathname); // never leave tokens visible in the address bar
   token = LS.get(K_TOKEN);
 
   async function boot() {
     s = fresh();
     if (fbToken) return startFeedbackByToken(fbToken, true);
+    if (wantSetup) { if (token) await loadConfig(); return renderSetup(); }
     if (!token) return renderSetup();
     await loadConfig();
     if (cfg) render();
@@ -609,11 +611,12 @@
     $top.innerHTML = '<div class="mark">⚙</div><div class="names"><b>Kiosk set-up</b><span>Staff only</span></div>';
     $foot.innerHTML = `${queue().length} registration(s) stored offline on this device.`;
     $app.innerHTML = `<div class="panel setup"><div class="phead"><h2>Connect this tablet to a Hub</h2>
-        <p>Paste the kiosk link or code for this Hub. Hub Managers can copy it from <b>Administration → Hubs & kiosks</b> in the staff app.</p></div>
+        <p>Paste the kiosk link or code for this Hub. Hub Managers can copy it from <b>Administration → Hubs & kiosks</b> in the staff app.</p>
+        ${token && cfg ? `<div class="welcome-back" style="margin-top:14px">This device is currently connected to: ${esc(cfg.hub.name)}</div>` : '<p style="margin-top:10px"><b>This device is not connected to a Hub yet.</b></p>'}</div>
       <div class="pbody"><label class="f" for="code">Kiosk link or code</label>
         <input class="t" id="code" autocomplete="off" placeholder="https://…/kiosk.html?k=…" style="font-size:20px">
         <div class="err">${esc(err || '')}</div></div>
-      <div class="pfoot">${token ? '<button class="btn ghost" id="cancel">Cancel</button><button class="btn ghost" id="forget">Remove from device</button>' : ''}<button class="btn grow" id="save">Save</button></div></div>`;
+      <div class="pfoot">${token ? `<button class="btn ghost" id="forget">Remove from device</button><button class="btn ghost" id="cancel">${cfg ? 'Keep ' + esc(cfg.hub.name.replace(' Community Hub', '')) : 'Cancel'}</button>` : ''}<button class="btn grow" id="save">Connect</button></div></div>`;
     bind('cancel', 'click', reset);
     bind('forget', 'click', () => { LS.del(K_TOKEN); LS.del(K_CFG); token = null; cfg = null; renderSetup(); });
     bind('save', 'click', async () => {

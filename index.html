@@ -308,7 +308,7 @@ function renderAuth(mode = 'login', msg = '') {
       <button class="btn" style="width:100%;padding:12px" id="go">Sign in</button>
       <div class="row" style="justify-content:space-between;margin-top:16px;font-size:14px">
         <a href="#" id="toSignup">First time? Create your account</a><a href="#" id="toReset">Forgot password?</a></div>
-      <p class="faint" style="font-size:12.5px;margin-top:26px">Setting up a tablet? Open <a href="kiosk.html">kiosk.html</a> on the tablet and paste the Hub's kiosk link.</p>`;
+      <p class="faint" style="font-size:12.5px;margin-top:26px">Setting up a tablet? Open the <a href="kiosk.html?setup">kiosk set-up page</a> on the tablet and paste the Hub's kiosk link (from Administration → Hubs & kiosks).</p>`;
     const go = async () => {
       $('am').textContent = '';
       const { error } = await sb.auth.signInWithPassword({ email: $('em').value.trim(), password: $('pw').value });
@@ -1332,7 +1332,7 @@ async function aHubs() {
       return `<tr><td><div class="row" style="gap:10px;flex-wrap:nowrap"><div class="logoslot sm" style="border-color:${esc(h.brand_colour)}">${h.logo_url ? `<img src="${esc(h.logo_url)}" alt="">` : `<span style="color:${esc(h.brand_colour)}">${esc(hubInitials(h.name))}</span>`}</div>
         <div><b>${esc(h.name)}</b><div class="faint" style="font-size:12px">${esc(h.code || '')}${h.logo_url ? '' : ' · no logo yet'}</div></div></div></td>
         <td>${esc(h.town || '—')}</td><td>${esc(nameOf(A.ref.regions, h.region_id))}</td><td>${A.ref.hubSvc.filter(s => s.hub_id === h.id).length} of ${A.ref.cats.filter(c => c.active).length}</td>
-        <td>${l ? `<button class="btn sm sec" data-copy="${esc(url)}">Copy link</button> <a class="btn sm sec" href="${esc(url)}" target="_blank" style="text-decoration:none">Open</a> <button class="btn sm sec" data-rot="${h.id}" title="Old link stops working">New link</button>` : '—'}</td>
+        <td>${l ? `<button class="btn sm sec" data-copy="${esc(url)}">Copy link</button> <a class="btn sm sec" href="${esc(url)}" target="_blank" style="text-decoration:none" title="Opens this Hub's kiosk and connects this browser to it">Open kiosk</a> <button class="btn sm sec" data-rot="${h.id}" title="Old link stops working">New link</button>` : '—'}</td>
         <td>${activeBadge(h.active)}</td><td>${isAdmin() ? `<button class="btn sm sec" data-edit="${h.id}">Edit</button>` : ''}</td></tr>`;
     }))}
     <div class="note" style="margin-top:12px">Kiosk links are secret: anyone with a link can register visitors at that Hub, but nobody can read visitor data with it. If a tablet is lost, click <b>New link</b> to disable the old one.</div>`;
