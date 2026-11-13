@@ -2,7 +2,7 @@
 
 A web app for NPO Community Hubs: tablet kiosk sign-in, live service queue, visitor feedback, management dashboards, donor impact reports and PDF/Excel exports. It is multi-organisation (SaaS-ready) and designed around POPIA.
 
-Hosting: **GitHub Pages** (static files) + **Supabase** (Angels Resource Centres project, schema `npo_hub`).
+Hosting: **GitHub Pages** (static files) + **Supabase** — its own stand-alone project **NPO Community Hub** (`psyzuhxkrzbgpxlqfpdl`, eu-west-1), schema `npo_hub`. It has its own logins and emails, separate from every other app.
 Built by iHubSA.
 
 ## Files
@@ -17,7 +17,7 @@ Built by iHubSA.
 | `sql/02_functions.sql` | Kiosk, registration, donor-impact and POPIA functions |
 | `sql/03_demo_seed.sql` | Fictional demo data (re-runnable; replaces the demo organisation) |
 
-The SQL has already been applied to the Supabase project. The files are kept here as a record and for setting up a new project.
+The SQL has already been applied to the NPO Community Hub Supabase project. The files are kept here as a record and for setting up a new project.
 
 ## One-time Supabase setting
 
@@ -34,7 +34,7 @@ Without this the app shows "schema not exposed" / "Invalid schema".
 
 ## First sign-in
 
-A Super Administrator is linked by email. Open the app, choose **Create your account** with the invited email, confirm via the email link, then sign in.
+The Super Administrator (Brent) is already invited by email. Open the app, choose **Create your account** with that email, confirm via the email link, then sign in.
 Further users are added under **Administration → Users & access**, and then they create their account the same way.
 
 ## Setting up a Hub tablet
