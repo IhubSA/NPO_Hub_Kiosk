@@ -178,6 +178,11 @@
   .logoslot span { font-weight:800; font-size:24px; color:var(--brand); }
   .logoslot.sm { width:44px; height:44px; border-radius:12px; border-style:solid; border-width:2px; }
   .logoslot.sm span { font-size:15px; }
+  .narr { margin-bottom:12px; border-left:4px solid var(--accent); }
+  .narrstats { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12.5px; color:var(--muted); }
+  .narrstats b { color:var(--ink); font-size:14px; }
+  .narrtext { margin-top:10px; border-color:transparent; background:#fafcfb; line-height:1.55; font-size:14px; resize:none; overflow:hidden; }
+  .narrtext:hover { border-color:var(--line); }
   .bargrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:16px; }
   @media (max-width:1100px){ .bargrid{grid-template-columns:1fr} }
   .barcard h4 { margin:0 0 2px !important; }
@@ -1060,7 +1065,7 @@ function barListHtml(t) {
   const vi = t.value || 1, max = Math.max(1, ...t.rows.map(r => numOf(r[vi])));
   return `<div class="card barcard"><h4>${esc(t.title)}</h4>${t.cols[vi] ? `<div class="sub">${esc(t.cols[vi])}${t.sub ? ' · ' + esc(t.cols[t.sub]) : ''}</div>` : ''}
     ${t.rows.length ? t.rows.map(r => `<div class="bl"><div class="bl-l" title="${esc(r[0])}">${esc(r[0])}</div>
-      <div class="bl-t"><i style="width:${Math.max(2, 100 * numOf(r[vi]) / max).toFixed(1)}%"></i></div>
+      <div class="bl-t"><i style="width:${numOf(r[vi]) ? Math.max(2, 100 * numOf(r[vi]) / max).toFixed(1) : 0}%"></i></div>
       <div class="bl-v">${esc(r[vi])}${t.sub ? `<span>${esc(r[t.sub])}</span>` : ''}</div></div>`).join('') : '<div class="faint">No data for this selection.</div>'}</div>`;
 }
 function tableHtml(t) {
@@ -1084,9 +1089,20 @@ function renderReport(el, rep) {
     ${rep.summary && rep.summary.length ? `<div class="summary">${rep.summary.map(p => `<p>${esc(p)}</p>`).join('')}</div>` : ''}
     ${rep.chart ? `<h4>${esc(rep.chart.title || '')}</h4><div class="chartbox" style="height:${rep.chart.height || 280}px"><canvas id="repchart"></canvas></div>` : ''}
     ${reportTablesHtml(rep.tables || [])}
+    ${rep.narratives && rep.narratives.length ? `<h4 style="margin-top:26px">Hub narratives</h4>
+      <div class="faint" style="font-size:12.5px;margin-bottom:10px">Written automatically from the figures. Click any paragraph to edit it before you export — the PDF and Excel use your wording.</div>
+      ${rep.narratives.map((n, i) => `<div class="card narr">
+        <div class="row" style="justify-content:space-between;align-items:flex-start"><h3 style="margin:0">${esc(n.title)}</h3>
+          <div class="narrstats">${n.stats.map(([l, v]) => `<span><b>${esc(v)}</b> ${esc(l)}</span>`).join('')}</div></div>
+        ${n.funding ? `<div class="faint" style="font-size:12.5px;margin-top:4px">Funding: ${esc(n.funding)}</div>` : ''}
+        <textarea class="i narrtext" data-narr="${i}" rows="4">${esc(n.text)}</textarea></div>`).join('')}` : ''}
     ${rep.footnote ? `<div class="note" style="margin-top:18px">${esc(rep.footnote)}</div>` : ''}
   </div>`;
   if (rep.chart) chart('repchart', rep.chart.type || 'bar', rep.chart.labels, rep.chart.datasets, { horizontal: rep.chart.horizontal });
+  el.querySelectorAll('[data-narr]').forEach(t => {
+    const fit = () => { t.style.height = 'auto'; t.style.height = (t.scrollHeight + 2) + 'px'; };
+    t.addEventListener('input', () => { rep.narratives[+t.dataset.narr].text = t.value; fit(); }); setTimeout(fit, 0);
+  });
   $('xpdf').onclick = () => exportPDF(rep);
   $('xxls').onclick = () => exportXLSX(rep);
 }
@@ -1127,7 +1143,7 @@ function exportPDF(rep) {
       t.rows.forEach(r => {
         doc.setFontSize(8.5); doc.setTextColor(40, 50, 60); doc.text(doc.splitTextToSize(String(r[0]), labW - 8)[0], M, y + 8);
         doc.setFillColor(236, 241, 245); doc.roundedRect(barX, y + 1, barW, 9, 2, 2, 'F');
-        doc.setFillColor(42, 120, 214); doc.roundedRect(barX, y + 1, Math.max(2, barW * numOf(r[vi]) / max), 9, 2, 2, 'F');
+        doc.setFillColor(42, 120, 214); if (numOf(r[vi])) doc.roundedRect(barX, y + 1, Math.max(2, barW * numOf(r[vi]) / max), 9, 2, 2, 'F');
         doc.setFont('helvetica', 'bold'); doc.text(String(r[vi]), barX + barW + 8, y + 8); doc.setFont('helvetica', 'normal');
         if (t.sub) { doc.setTextColor(120, 130, 140); doc.text(String(r[t.sub]), barX + barW + 44, y + 8); }
         y += rowH;
@@ -1140,6 +1156,26 @@ function exportPDF(rep) {
       styles: { fontSize: 8.5, cellPadding: 4 }, headStyles: { fillColor: [11, 44, 70] }, alternateRowStyles: { fillColor: [246, 248, 247] } });
     y = doc.lastAutoTable.finalY + 22;
   });
+  if (rep.narratives && rep.narratives.length) {
+    if (y > 700) { doc.addPage(); y = 50; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20, 32, 31); doc.text('Hub narratives', M, y); y += 18;
+    rep.narratives.forEach(n => {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+      const lines = doc.splitTextToSize(n.text || '', W - 2 * M - 24);
+      const need = 46 + lines.length * 12 + (n.funding ? 12 : 0);
+      if (y + need > 800) { doc.addPage(); y = 50; }
+      doc.setFillColor(246, 248, 247); doc.roundedRect(M, y - 4, W - 2 * M, need - 6, 6, 6, 'F');
+      doc.setFillColor(76, 154, 42); doc.rect(M, y - 4, 3, need - 6, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(11, 44, 70); doc.text(n.title, M + 12, y + 10);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(91, 107, 105);
+      doc.text(n.stats.map(([l, v]) => v + ' ' + l.toLowerCase()).join('   ·   '), M + 12, y + 23);
+      let yy = y + 23;
+      if (n.funding) { yy += 12; doc.text(doc.splitTextToSize('Funding: ' + n.funding, W - 2 * M - 16)[0], M + 12, yy); }
+      doc.setFontSize(9.5); doc.setTextColor(20, 32, 31); doc.text(lines, M + 12, yy + 15);
+      y += need + 6;
+    });
+    y += 6;
+  }
   if (rep.footnote) { if (y > 760) { doc.addPage(); y = 50; } doc.setFontSize(8.5); doc.setTextColor(91, 107, 105); doc.text(doc.splitTextToSize(rep.footnote, W - 2 * M), M, y); }
   const pages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pages; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(138, 152, 150); doc.text(`Page ${i} of ${pages} · Contains aggregated data only — no personal information`, M, 822); }
@@ -1156,6 +1192,11 @@ function exportXLSX(rep) {
   if (rep.footnote) { summary.push([]); summary.push([rep.footnote]); }
   const ws = XLSX.utils.aoa_to_sheet(summary); ws['!cols'] = [{ wch: 40 }, { wch: 22 }];
   XLSX.utils.book_append_sheet(wb, ws, 'Summary');
+  if (rep.narratives && rep.narratives.length) {
+    const ns = XLSX.utils.aoa_to_sheet([['Hub', ...rep.narratives[0].stats.map(x => x[0]), 'Funding', 'Narrative'], ...rep.narratives.map(n => [n.title, ...n.stats.map(x => x[1]), n.funding || '', n.text])]);
+    ns['!cols'] = [{ wch: 32 }, ...rep.narratives[0].stats.map(() => ({ wch: 13 })), { wch: 40 }, { wch: 110 }];
+    XLSX.utils.book_append_sheet(wb, ns, 'Hub narratives');
+  }
   (rep.tables || []).forEach((t, i) => {
     const s = XLSX.utils.aoa_to_sheet([t.cols, ...t.rows.map(r => r.map(v => (typeof v === 'string' && /^-?\d[\d\s\u00a0\u202f]*(\.\d+)?$/.test(v)) ? Number(v.replace(/[\s\u00a0\u202f]/g, '')) : v))]);
     s['!cols'] = t.cols.map((c, j) => ({ wch: j ? 16 : 34 }));
@@ -1215,6 +1256,26 @@ async function drawDonor() {
   $('dout') && renderReport($('dout'), donorReport(r));
 }
 
+const plural = (n, one, many) => `${fmtN(n)} ${Number(n) === 1 ? one : (many || one + 's')}`;
+const listAnd = arr => arr.length <= 1 ? (arr[0] || '') : arr.slice(0, -1).join(', ') + ' and ' + arr[arr.length - 1];
+function hubNarrative(h, donorName) {
+  const where = h.town && !h.hub.toLowerCase().includes(h.town.toLowerCase()) ? `${h.hub} in ${h.town}` : h.hub;
+  if (!h.interactions) return `No services under ${donorName}'s funded programmes have been recorded at ${where} in this period${h.since ? ` (funding started on ${fmtDate(h.since)})` : ''}. Results will appear here as Community Liaison Officers record the services they provide.`;
+  const parts = [];
+  parts.push(`${donorName}'s funding at ${where} supported ${plural(h.unique, 'person', 'people')} through ${plural(h.interactions, 'service interaction')}${h.new ? `, including ${plural(h.new, 'first-time visitor')}` : ''}.`);
+  if (h.top_services && h.top_services.length) parts.push(`The most requested support was ${listAnd(h.top_services.map(t => `${t.name} (${fmtN(t.n)})`))}.`);
+  const out = [];
+  if (h.provided) out.push(`${plural(h.provided, 'service was', 'services were')} provided directly`);
+  if (h.referred) out.push(`${plural(h.referred, 'person was', 'people were')} referred to partner organisations`);
+  if (h.follow_up) out.push(`${plural(h.follow_up, 'case needs', 'cases need')} follow-up`);
+  if (out.length) parts.push(listAnd(out).replace(/^./, c => c.toUpperCase()) + '.');
+  if (h.pending) parts.push(`${plural(h.pending, 'service is', 'services are')} still to be recorded by staff.`);
+  if (h.unable) parts.push(`The Hub was unable to assist with ${plural(h.unable, 'request')}.`);
+  parts.push(h.feedback ? `Visitors rated the service ${Number(h.avg_rating).toFixed(1)} out of 5 across ${plural(h.feedback, 'feedback response')}.` : 'No visitor feedback has been received yet.');
+  if (h.top_communities && h.top_communities.length) parts.push(`Most beneficiaries came from ${listAnd(h.top_communities)}.`);
+  return parts.join(' ');
+}
+const hubFundingLine = h => (h.funding || []).map(f => `${fmtR(f.amount)} ${f.programme}${f.hubs > 1 ? ` (shared across ${f.hubs} Hubs)` : f.hubs === 1 ? '' : ' (all Hubs)'}`).join(' · ');
 function donorReport(r) {
   const T = r.totals || {};
   const months = (r.by_month || []);
@@ -1243,6 +1304,12 @@ function donorReport(r) {
       { title: 'Beneficiaries by gender', sheet: 'Gender', viz: true, cols: ['Gender', 'Beneficiaries'], rows: (r.by_gender || []).map(x => [x.label, fmtN(x.value)]) },
       { title: 'Top communities', sheet: 'Communities', viz: true, cols: ['Community', 'Beneficiaries'], rows: (r.by_community || []).map(x => [x.label, fmtN(x.value)]) }
     ],
+    narratives: (r.hub_detail || []).map(h => ({
+      title: h.hub + (h.town && !h.hub.toLowerCase().includes(h.town.toLowerCase()) ? ' · ' + h.town : ''),
+      stats: [['People reached', fmtN(h.unique)], ['Interactions', fmtN(h.interactions)], ['Provided', fmtN(h.provided)], ['Referred', fmtN(h.referred)], ['Rating', h.avg_rating ? Number(h.avg_rating).toFixed(1) + '/5' : '–']],
+      funding: hubFundingLine(h),
+      text: hubNarrative(h, r.donor ? r.donor.name : 'The donor')
+    })),
     footnote: 'These figures measure outputs (reach and services provided) and early outcomes (resolution and satisfaction). They are not a financial or social return on investment (SROI) calculation, which needs additional outcome verification and an agreed methodology. No personal information about beneficiaries is included in this report.'
   };
 }
