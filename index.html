@@ -232,6 +232,8 @@ async function ensureTown(region, name) {
   if (!t) { t = await q(sb.from('towns').insert({ org_id: A.m.org_id, region_id: region.id, name }).select().single()); A.ref.towns.push(t); }
   return t;
 }
+const allocHubIds = a => { const ids = A.ref.allocHubs.filter(x => x.allocation_id === a.id).map(x => x.hub_id); return ids.length ? ids : (a.hub_id ? [a.hub_id] : []); };
+const allocHubLabel = a => { const ids = allocHubIds(a); return ids.length ? ids.map(id => nameOf(A.ref.hubs, id).replace(' Community Hub', '')).join(', ') : 'All hubs'; };
 const townsIn = provName => { const r = A.ref.regions.find(x => x.name === provName); return r ? A.ref.towns.filter(t => t.region_id === r.id).map(t => t.name).sort() : []; };
 const STAFF = ['super_admin', 'management', 'hub_manager', 'hub_staff', 'programme_manager'];
 const MANAGERS = ['super_admin', 'management'];
@@ -440,14 +442,15 @@ async function loadRef() {
     q(sb.from('communities').select('*').eq('org_id', o).order('name')),
     q(sb.from('members').select('*').eq('org_id', o).order('full_name'))
   ]);
-  let donors = [], allocs = [], hubSvc = [];
+  let donors = [], allocs = [], hubSvc = [], allocHubs = [];
   if (role() !== 'hub_staff') {
     donors = await q(sb.from('donors').select('*').eq('org_id', o).order('name'));
     allocs = await q(sb.from('funding_allocations').select('*').eq('org_id', o).order('start_date'));
+    try { allocHubs = await q(sb.from('allocation_hubs').select('*').eq('org_id', o)); } catch (e) { allocHubs = []; }
   }
   hubSvc = await q(sb.from('hub_services').select('*').eq('org_id', o));
   const towns = await q(sb.from('towns').select('*').eq('org_id', o).order('name'));
-  A.ref = { org, regions, hubs, cats, progs, comms, members, donors, allocs, hubSvc, towns };
+  A.ref = { org, regions, hubs, cats, progs, comms, members, donors, allocs, hubSvc, towns, allocHubs };
 }
 
 function myHubs() {
@@ -1549,7 +1552,7 @@ async function aDonors() {
   $('dl').innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><h3 style="margin:0">Donors</h3><button class="btn" id="addD">+ Add donor</button></div>` +
     tbl(['Donor', 'Contact', 'Total allocated', 'Status', ''], A.ref.donors.map(d => `<tr><td><b>${esc(d.name)}</b><div class="faint" style="font-size:12.5px">${esc(d.notes || '')}</div></td><td>${esc(d.contact_name || '')}<div class="faint">${esc(d.contact_email || '')}</div></td>
       <td>${fmtR(A.ref.allocs.filter(a => a.donor_id === d.id).reduce((s, a) => s + Number(a.amount), 0))}</td><td>${activeBadge(d.active)}</td><td><button class="btn sm sec" data-ed="${d.id}">Edit</button></td></tr>`));
-  $('al').innerHTML = tbl(['Donor', 'Programme', 'Hub', 'Amount', 'Period', ''], A.ref.allocs.map(a => `<tr><td>${esc(nameOf(A.ref.donors, a.donor_id))}</td><td>${esc(nameOf(A.ref.progs, a.programme_id))}</td><td>${esc(a.hub_id ? nameOf(A.ref.hubs, a.hub_id) : 'All hubs')}</td>
+  $('al').innerHTML = tbl(['Donor', 'Programme', 'Hub', 'Amount', 'Period', ''], A.ref.allocs.map(a => `<tr><td>${esc(nameOf(A.ref.donors, a.donor_id))}</td><td>${esc(nameOf(A.ref.progs, a.programme_id))}</td><td>${esc(allocHubLabel(a))}</td>
       <td>${fmtR(a.amount)}</td><td>${fmtDate(a.start_date)} – ${fmtDate(a.end_date)}</td><td style="white-space:nowrap"><button class="btn sm sec" data-ea="${a.id}">Edit</button> <button class="btn sm danger" data-da="${a.id}">Delete</button></td></tr>`));
   const dForm = d => modal(d.id ? 'Edit donor' : 'Add donor', `<div class="fld">${fld('Donor name', `<input class="i" id="d_name" value="${esc(d.name || '')}">`)}${fld('Contact person', `<input class="i" id="d_cn" value="${esc(d.contact_name || '')}">`)}
       ${fld('Contact email', `<input class="i" id="d_ce" type="email" value="${esc(d.contact_email || '')}">`)}${fld('Notes', `<textarea class="i" id="d_notes">${esc(d.notes || '')}</textarea>`)}
@@ -1557,15 +1560,27 @@ async function aDonors() {
     { save: async () => { const row = { org_id: A.m.org_id, name: $('d_name').value.trim(), contact_name: $('d_cn').value.trim() || null, contact_email: $('d_ce').value.trim() || null, notes: $('d_notes').value.trim() || null, active: $('d_act').value === 'true' };
       if (!row.name) { toast('Enter a donor name', true); return false; }
       if (d.id) await q(sb.from('donors').update(row).eq('id', d.id)); else await q(sb.from('donors').insert(row)); toast('Donor saved'); await reload(); } });
-  const aForm = a => modal(a.id ? 'Edit allocation' : 'Add funding allocation', `<div class="fld grid g2" style="gap:0 14px">
+  const aForm = a => { const mw = modal(a.id ? 'Edit allocation' : 'Add funding allocation', `<div class="fld grid g2" style="gap:0 14px">
       ${fld('Donor', `<select class="i" id="a_d">${opts(A.ref.donors, a.donor_id)}</select>`)}${fld('Programme', `<select class="i" id="a_p">${opts(A.ref.progs, a.programme_id)}</select>`)}
-      ${fld('Hub', `<select class="i" id="a_h">${opts(A.ref.hubs, a.hub_id, 'All hubs')}</select>`)}${fld('Amount (R)', `<input class="i" id="a_amt" type="number" min="0" step="1000" value="${esc(a.amount || '')}">`)}
+      ${fld('Amount (R)', `<input class="i" id="a_amt" type="number" min="0" step="1000" value="${esc(a.amount || '')}">`)}
       ${fld('Start date', `<input class="i" id="a_s" type="date" value="${esc(a.start_date || today())}">`)}${fld('End date', `<input class="i" id="a_e" type="date" value="${esc(a.end_date || addDays(today(), 364))}">`)}
-      ${fld('Notes', `<input class="i" id="a_n" value="${esc(a.notes || '')}">`, true)}</div>`,
-    { save: async () => { const row = { org_id: A.m.org_id, donor_id: $('a_d').value, programme_id: $('a_p').value, hub_id: $('a_h').value || null, amount: Number($('a_amt').value || 0), start_date: $('a_s').value, end_date: $('a_e').value, notes: $('a_n').value.trim() || null };
+      ${fld('Notes', `<input class="i" id="a_n" value="${esc(a.notes || '')}">`, true)}</div>
+      <label class="lb">Hubs covered by this funding</label>
+      <div class="checks" id="a_hubs"><label style="font-weight:700"><input type="checkbox" id="a_all" ${allocHubIds(a).length ? '' : 'checked'}> All hubs</label>
+        ${A.ref.hubs.map(h => `<label><input type="checkbox" data-ah value="${h.id}" ${allocHubIds(a).includes(h.id) ? 'checked' : ''}> ${esc(h.name)}</label>`).join('')}</div>
+      <div class="faint" style="font-size:12.5px;margin-top:6px">Tick the Hubs this one amount covers. If each Hub gets its own amount, add a separate allocation per Hub instead.</div>`,
+    { save: async () => { const hubIds = $('a_all').checked ? [] : [...document.querySelectorAll('[data-ah]:checked')].map(i => i.value);
+      if (!$('a_all').checked && !hubIds.length) { toast('Tick at least one Hub, or All hubs', true); return false; }
+      const row = { org_id: A.m.org_id, donor_id: $('a_d').value, programme_id: $('a_p').value, hub_id: null, amount: Number($('a_amt').value || 0), start_date: $('a_s').value, end_date: $('a_e').value, notes: $('a_n').value.trim() || null };
       if (!row.donor_id || !row.programme_id) { toast('Choose a donor and a programme', true); return false; }
       if (row.end_date < row.start_date) { toast('End date must be after start date', true); return false; }
-      if (a.id) await q(sb.from('funding_allocations').update(row).eq('id', a.id)); else await q(sb.from('funding_allocations').insert(row)); toast('Allocation saved'); await reload(); } });
+      const saved = a.id ? await q(sb.from('funding_allocations').update(row).eq('id', a.id).select().single()) : await q(sb.from('funding_allocations').insert(row).select().single());
+      await q(sb.from('allocation_hubs').delete().eq('allocation_id', saved.id));
+      if (hubIds.length) await q(sb.from('allocation_hubs').insert(hubIds.map(h => ({ allocation_id: saved.id, hub_id: h, org_id: A.m.org_id }))));
+      toast('Allocation saved'); await reload(); } });
+    const sync = () => mw.querySelectorAll('[data-ah]').forEach(i => { i.disabled = $('a_all').checked; if ($('a_all').checked) i.checked = false; });
+    $('a_all').onchange = sync; sync();
+  };
   $('addD').onclick = () => dForm({});
   $('addAl').onclick = () => A.ref.donors.length && A.ref.progs.length ? aForm({}) : toast('Add a donor and a programme first', true);
   document.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => dForm(byId(A.ref.donors, b.dataset.ed)));
