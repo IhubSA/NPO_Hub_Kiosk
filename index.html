@@ -127,6 +127,8 @@
   .chipx:hover { color:var(--danger); }
   .chipbtn { border:0; cursor:pointer; font:inherit; font-size:12.5px; }
   .chipbtn:hover { background:var(--brand-soft); }
+  .pchip { border:1.5px solid var(--line); background:#fff; border-radius:999px; padding:6px 12px; font-weight:600; font-size:13px; cursor:pointer; color:var(--muted); }
+  .pchip.on { background:var(--brand-soft); border-color:var(--brand); color:var(--brand); }
   .addchips { display:flex; flex-wrap:wrap; gap:6px; }
   .addchip { border:1.5px dashed #c3d3d0; background:#fafcfb; border-radius:999px; padding:6px 12px; font-weight:600; font-size:13px; cursor:pointer; color:var(--ink); }
   .addchip:hover { border-color:var(--brand); color:var(--brand); }
@@ -1165,7 +1167,7 @@ function exportXLSX(rep) {
 /* =====================================================================
    DONOR IMPACT (Module 6)
    ===================================================================== */
-const DD = { donor: '', from: '', to: today() };
+const DD = { donor: '', from: '', to: today(), progs: null };
 async function vDonor() {
   const donors = A.ref.donors.filter(d => d.active || role() === 'donor_viewer');
   if (role() === 'donor_viewer') DD.donor = A.m.donor_id;
@@ -1178,15 +1180,38 @@ async function vDonor() {
       <span class="lbl">From</span><input class="i" type="date" id="d_from" value="${DD.from}">
       <span class="lbl">To</span><input class="i" type="date" id="d_to" value="${DD.to}">
       <span class="faint" style="font-size:12.5px">Only services linked to this donor's funded programmes, Hubs and funding dates are counted.</span>
+      <div style="flex-basis:100%;height:0"></div>
+      <span class="lbl">Programmes</span><div class="addchips" id="d_progs"></div>
     </div><div id="dout"><div class="spin"></div></div>`;
-  if ($('d_donor')) $('d_donor').onchange = e => { DD.donor = e.target.value; DD.from = ''; vDonor().catch(fail); };
+  drawProgChips();
+  if ($('d_donor')) $('d_donor').onchange = e => { DD.donor = e.target.value; DD.from = ''; DD.progs = null; vDonor().catch(fail); };
   $('d_from').onchange = e => { DD.from = e.target.value; drawDonor().catch(fail); };
   $('d_to').onchange = e => { DD.to = e.target.value; drawDonor().catch(fail); };
   await drawDonor();
 }
 
+// the donor's funded programmes as on/off chips (all on = whole donor portfolio)
+function donorProgs() { return uniq(A.ref.allocs.filter(a => a.donor_id === DD.donor).map(a => a.programme_id)).map(id => byId(A.ref.progs, id)).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name)); }
+function drawProgChips() {
+  const el = $('d_progs'); if (!el) return;
+  const list = donorProgs(); const on = DD.progs || list.map(p => p.id);
+  el.innerHTML = list.length ? `<button class="pchip ${on.length === list.length ? 'on' : ''}" data-pall>All programmes (${list.length})</button>` +
+    list.map(p => `<button class="pchip ${on.includes(p.id) ? 'on' : ''}" data-pid="${p.id}">${on.includes(p.id) ? '✓ ' : ''}${esc(p.name)}</button>`).join('')
+    : '<span class="faint" style="font-size:12.5px">No funding allocations for this donor yet.</span>';
+  el.querySelectorAll('[data-pall]').forEach(b => b.onclick = () => { DD.progs = null; drawProgChips(); drawDonor().catch(fail); });
+  el.querySelectorAll('[data-pid]').forEach(b => b.onclick = () => {
+    const cur = new Set(DD.progs || list.map(p => p.id));
+    cur.has(b.dataset.pid) ? cur.delete(b.dataset.pid) : cur.add(b.dataset.pid);
+    if (!cur.size) return toast('Keep at least one programme selected', true);
+    DD.progs = cur.size === list.length ? null : [...cur];
+    drawProgChips(); drawDonor().catch(fail);
+  });
+}
 async function drawDonor() {
-  const r = await q(sb.rpc('donor_impact', { p_org: A.m.org_id, p_donor: DD.donor, p_from: DD.from, p_to: DD.to }));
+  const args = { p_org: A.m.org_id, p_donor: DD.donor, p_from: DD.from, p_to: DD.to };
+  if (DD.progs) args.p_programmes = DD.progs;
+  const r = await q(sb.rpc('donor_impact', args));
+  r._subset = !!DD.progs;
   $('dout') && renderReport($('dout'), donorReport(r));
 }
 
@@ -1196,7 +1221,7 @@ function donorReport(r) {
   const perBen = T.unique_beneficiaries ? r.total_funding / T.unique_beneficiaries : null;
   const progLines = (r.by_programme || []).map(p => `${p.programme}: ${fmtN(p.unique)} people reached through ${fmtN(p.interactions)} service interactions (${fmtN(p.completed)} provided directly, ${fmtN(p.referred)} referred on)${p.avg_rating ? ', rated ' + Number(p.avg_rating).toFixed(1) + '/5' : ''}.`);
   return {
-    title: 'Donor Impact Report', subtitle: r.donor ? r.donor.name : '', period: fmtDate(r.period.from) + ' – ' + fmtDate(r.period.to),
+    title: 'Donor Impact Report', subtitle: (r.donor ? r.donor.name : '') + (r._subset && r.programmes_included && r.programmes_included.length ? ' · ' + r.programmes_included.join(', ') : ''), period: fmtDate(r.period.from) + ' – ' + fmtDate(r.period.to),
     kpis: [['Funding allocated', fmtR(r.total_funding)], ['Unique beneficiaries', fmtN(T.unique_beneficiaries)], ['Service interactions', fmtN(T.interactions)],
            ['New beneficiaries', fmtN(T.new_beneficiaries)], ['Services provided', fmtN(T.completed)], ['Referrals', fmtN(T.referred)],
            ['Requests resolved', fmtPct(T.resolved_pct)], ['Avg satisfaction', T.avg_rating ? Number(T.avg_rating).toFixed(2) + '/5' : '–'],
