@@ -275,7 +275,8 @@ function renderAuth(mode = 'login', msg = '') {
       const { error } = await sb.auth.signInWithPassword({ email: $('em').value.trim(), password: $('pw').value });
       if (error) $('am').textContent = error.message;
     };
-    $('go').onclick = go; $('pw').onkeydown = e => e.key === 'Enter' && go();
+    $('go').onclick = go;
+    [$('em'), $('pw')].forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } }));
     $('toSignup').onclick = e => { e.preventDefault(); renderAuth('signup'); };
     $('toReset').onclick = e => { e.preventDefault(); renderAuth('reset'); };
   } else if (mode === 'signup') {
