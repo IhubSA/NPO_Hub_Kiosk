@@ -116,6 +116,10 @@
   .oc.on { color:#fff; border-color:transparent; }
   .oc.on.completed { background:#067647; } .oc.on.referred { background:#6250d6; } .oc.on.follow_up { background:#c4541f; } .oc.on.unable { background:#b42318; }
   .svcline { display:grid; grid-template-columns:150px 1fr; gap:10px; font-size:14px; align-items:start; }
+  .chipx { border:0; background:none; color:var(--muted); cursor:pointer; font-size:15px; line-height:1; padding:0 0 0 4px; }
+  .chipx:hover { color:var(--danger); }
+  .chipbtn { border:0; cursor:pointer; font:inherit; font-size:12.5px; }
+  .chipbtn:hover { background:var(--brand-soft); }
   .addchips { display:flex; flex-wrap:wrap; gap:6px; }
   .addchip { border:1.5px dashed #c3d3d0; background:#fafcfb; border-radius:999px; padding:6px 12px; font-weight:600; font-size:13px; cursor:pointer; color:var(--ink); }
   .addchip:hover { border-color:var(--brand); color:var(--brand); }
@@ -200,6 +204,17 @@ const VISIT_STATUS = { awaiting: 'Waiting', in_progress: 'In progress', follow_u
 const AGE_GROUPS = ['Under 18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
 const GENDERS = ['Female', 'Male', 'Non-binary', 'Prefer not to say'];
 const PROVINCES = ['Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape', 'Western Cape'];
+async function ensureProvince(name) {
+  let r = A.ref.regions.find(x => x.name === name);
+  if (!r) { r = await q(sb.from('regions').insert({ org_id: A.m.org_id, name, province: name }).select().single()); A.ref.regions.push(r); }
+  return r;
+}
+async function ensureTown(region, name) {
+  let t = A.ref.towns.find(x => x.region_id === region.id && x.name.toLowerCase() === name.toLowerCase());
+  if (!t) { t = await q(sb.from('towns').insert({ org_id: A.m.org_id, region_id: region.id, name }).select().single()); A.ref.towns.push(t); }
+  return t;
+}
+const townsIn = provName => { const r = A.ref.regions.find(x => x.name === provName); return r ? A.ref.towns.filter(t => t.region_id === r.id).map(t => t.name).sort() : []; };
 const STAFF = ['super_admin', 'management', 'hub_manager', 'hub_staff', 'programme_manager'];
 const MANAGERS = ['super_admin', 'management'];
 const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'];
@@ -406,7 +421,8 @@ async function loadRef() {
     allocs = await q(sb.from('funding_allocations').select('*').eq('org_id', o).order('start_date'));
   }
   hubSvc = await q(sb.from('hub_services').select('*').eq('org_id', o));
-  A.ref = { org, regions, hubs, cats, progs, comms, members, donors, allocs, hubSvc };
+  const towns = await q(sb.from('towns').select('*').eq('org_id', o).order('name'));
+  A.ref = { org, regions, hubs, cats, progs, comms, members, donors, allocs, hubSvc, towns };
 }
 
 function myHubs() {
@@ -1288,7 +1304,7 @@ async function drawReport() {
    ADMINISTRATION (Module 7)
    ===================================================================== */
 const ADMIN_TABS = [
-  ['hubs', 'Hubs & kiosks'], ['regions', 'Provinces'], ['services', 'Service categories'], ['programmes', 'Programmes'], ['donors', 'Donors & funding'],
+  ['hubs', 'Hubs & kiosks'], ['regions', 'Provinces & towns'], ['services', 'Service categories'], ['programmes', 'Programmes'], ['donors', 'Donors & funding'],
   ['users', 'Users & access'], ['communities', 'Communities'], ['settings', 'Settings & POPIA'], ['audit', 'Audit log']
 ];
 let ADM = 'hubs';
@@ -1340,8 +1356,8 @@ function hubForm(h) {
     <div class="fld grid g2" style="gap:0 14px">
     ${fld('Hub name', `<input class="i" id="h_name" value="${esc(h.name || '')}">`, true)}
     ${fld('Short code', `<input class="i" id="h_code" value="${esc(h.code || '')}">`)}
-    ${fld('Town', `<input class="i" id="h_town" list="h_towns" value="${esc(h.town || '')}" placeholder="e.g. Fish Hoek"><datalist id="h_towns">${uniq(A.ref.hubs.map(x => x.town).filter(Boolean)).sort().map(t => `<option value="${esc(t)}">`).join('')}</datalist>`)}
-    ${fld('Province', `<select class="i" id="h_region">${sopts(PROVINCES, (byId(A.ref.regions, h.region_id) || {}).name || '', 'Select province…')}</select>`)}
+    ${fld('Province', `<select class="i" id="h_region">${sopts(PROVINCES, h._province || (byId(A.ref.regions, h.region_id) || {}).name || '', 'Select province…')}</select>`)}
+    ${fld('Town', `<select class="i" id="h_town"></select><input class="i hidden" id="h_town_new" placeholder="Type the new town's name" style="margin-top:6px">`)}
     ${fld('Address', `<input class="i" id="h_addr" value="${esc(h.address || '')}">`, true)}
     ${fld('Brand colour (kiosk)', `<input class="i" type="color" id="h_col" value="${esc(h.brand_colour || '#0f766e')}" style="height:40px;padding:4px">`)}
     ${fld('Status', `<select class="i" id="h_act">${opts([{ id: 'true', name: 'Active' }, { id: 'false', name: 'Inactive' }], String(h.active !== false))}</select>`)}
@@ -1350,9 +1366,12 @@ function hubForm(h) {
     <div class="faint" style="font-size:12.5px;margin-top:6px">Unticked services still appear on the kiosk as "not offered here" so visitors can record the need.</div>`,
   { save: async w => {
     const prov = $('h_region').value;
-    let region = prov ? A.ref.regions.find(r => r.name === prov) : null;
-    if (prov && !region) region = await q(sb.from('regions').insert({ org_id: A.m.org_id, name: prov, province: prov }).select().single());
-    const row = { org_id: A.m.org_id, name: $('h_name').value.trim(), code: $('h_code').value.trim() || null, region_id: region ? region.id : null, town: $('h_town').value.trim() || null, address: $('h_addr').value.trim() || null,
+    const region = prov ? await ensureProvince(prov) : null;
+    let townName = $('h_town').value === '__new' ? $('h_town_new').value.trim() : $('h_town').value;
+    if ($('h_town').value === '__new' && !townName) { toast('Type the new town name', true); return false; }
+    if (townName && !region) { toast('Choose a province for the town', true); return false; }
+    if (townName) townName = (await ensureTown(region, townName)).name;
+    const row = { org_id: A.m.org_id, name: $('h_name').value.trim(), code: $('h_code').value.trim() || null, region_id: region ? region.id : null, town: townName || null, address: $('h_addr').value.trim() || null,
                   brand_colour: $('h_col').value, active: $('h_act').value === 'true', welcome_message: $('h_wel').value.trim() || null };
     if (!row.name) { toast('Enter a hub name', true); return false; }
     const saved = h.id ? (await q(sb.from('hubs').update(row).eq('id', h.id).select().single())) : (await q(sb.from('hubs').insert(row).select().single()));
@@ -1374,6 +1393,16 @@ function hubForm(h) {
     if (want.length) await q(sb.from('hub_services').insert(want.map(c => ({ hub_id: saved.id, category_id: c, org_id: A.m.org_id }))));
     toast('Hub saved'); await reload();
   } });
+  const drawTowns = keep => {
+    const list = townsIn($('h_region').value);
+    const cur = keep !== undefined ? keep : (h.town || '');
+    if (cur && !list.includes(cur) && $('h_region').value === (byId(A.ref.regions, h.region_id) || {}).name) list.push(cur);
+    $('h_town').innerHTML = (list.length ? sopts(list, cur, 'Select town…') : '<option value="">No towns yet</option>') + '<option value="__new">+ New town…</option>';
+    $('h_town_new').classList.toggle('hidden', $('h_town').value !== '__new');
+  };
+  $('h_region').onchange = () => drawTowns('');
+  $('h_town').onchange = () => { $('h_town_new').classList.toggle('hidden', $('h_town').value !== '__new'); if ($('h_town').value === '__new') $('h_town_new').focus(); };
+  drawTowns();
   $('h_logo').onchange = e => {
     const f = e.target.files[0]; if (!f) return;
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(f.type)) { e.target.value = ''; return toast('Please choose a PNG, JPG or WebP image', true); }
@@ -1413,10 +1442,28 @@ function simpleCrud({ table, title, rows, cols, render, fields, defaults = {}, a
 }
 
 async function aRegions() {
-  simpleCrud({ table: 'regions', title: 'province', rows: A.ref.regions, cols: ['Province', 'Towns', 'Hubs'], allowDelete: true,
-    render: r => { const hs = A.ref.hubs.filter(h => h.region_id === r.id); return [esc(r.name), uniq(hs.map(h => h.town).filter(Boolean)).sort().map(t => chip(t)).join('') || '<span class="faint">—</span>', hs.map(h => chip(h.name.replace(' Community Hub', ''))).join('') || '<span class="faint">None</span>']; },
-    fields: [{ k: 'name', label: 'Province', req: true, type: 'select', options: v => sopts(PROVINCES.filter(p => p === v || !A.ref.regions.some(r => r.name === p)), v, 'Select…') }] });
-  $('aout').insertAdjacentHTML('afterbegin', '<div class="note" style="margin-bottom:12px">All nine provinces are available. Set each Hub\'s province and town under <b>Hubs & kiosks → Edit</b>; both can be used to filter the dashboard.</div>');
+  const hubsOf = r => r ? A.ref.hubs.filter(h => h.region_id === r.id) : [];
+  $('aout').innerHTML = `<div class="note" style="margin-bottom:12px"><b>Where the Hubs are:</b> Province → Town → Hub. Use these to filter the dashboard and reports.
+      Where <i>visitors</i> live is set under <b>Communities</b>.</div>
+    ${tbl(['Province', 'Towns', 'Hubs'], PROVINCES.map(p => {
+      const r = A.ref.regions.find(x => x.name === p);
+      const towns = r ? A.ref.towns.filter(t => t.region_id === r.id) : [];
+      const hubs = hubsOf(r);
+      return `<tr><td><b>${esc(p)}</b></td>
+        <td>${towns.map(t => { const used = hubs.some(h => h.town === t.name); return `<span class="chip">${esc(t.name)}${used ? '' : ` <button class="chipx" data-deltown="${t.id}" title="Remove town">×</button>`}</span>`; }).join('')}
+          <button class="addchip" data-addtown="${esc(p)}">+ Add town</button></td>
+        <td>${hubs.map(h => `<button class="chip chipbtn" data-edithub="${h.id}" title="Edit hub">${esc(h.name.replace(' Community Hub', ''))}${h.town ? ` <span class="faint">· ${esc(h.town)}</span>` : ''}</button>`).join('')}
+          <button class="addchip" data-addhub="${esc(p)}">+ Add hub</button></td></tr>`;
+    }))}
+    <div class="faint" style="font-size:12.5px;margin-top:8px">A town can only be removed when no Hub uses it. Click a Hub to edit it.</div>`;
+  document.querySelectorAll('[data-addtown]').forEach(b => b.onclick = () => modal('Add a town in ' + b.dataset.addtown, `<div class="fld">${fld('Town name', '<input class="i" id="t_name" placeholder="e.g. Fish Hoek">')}</div>`,
+    { save: async () => { const n = $('t_name').value.trim(); if (!n) { toast('Enter a town name', true); return false; }
+        await ensureTown(await ensureProvince(b.dataset.addtown), n); toast(n + ' added'); await reload(); } }));
+  document.querySelectorAll('[data-deltown]').forEach(b => b.onclick = async () => { const t = byId(A.ref.towns, b.dataset.deltown);
+    if (!await confirmDlg('Remove ' + t.name + '?', 'The town will be removed from the list. No Hubs use it.', 'Remove')) return;
+    try { await q(sb.from('towns').delete().eq('id', t.id)); await reload(); } catch (e) { fail(e); } });
+  document.querySelectorAll('[data-addhub]').forEach(b => b.onclick = () => hubForm({ active: true, brand_colour: '#0f766e', _province: b.dataset.addhub }));
+  document.querySelectorAll('[data-edithub]').forEach(b => b.onclick = () => hubForm(byId(A.ref.hubs, b.dataset.edithub)));
 }
 async function aServices() {
   simpleCrud({ table: 'service_categories', title: 'service category', rows: A.ref.cats, cols: ['', 'Category', 'Examples (shown on kiosk)', 'Order', 'Status'],
@@ -1503,10 +1550,24 @@ async function aUsers() {
 }
 
 async function aCommunities() {
-  simpleCrud({ table: 'communities', title: 'community', rows: A.ref.comms, cols: ['Community', 'Shown at'], allowDelete: true,
-    render: c => [esc(c.name), esc(c.hub_id ? nameOf(A.ref.hubs, c.hub_id) : 'All hubs')],
-    fields: [{ k: 'name', label: 'Community / area name', req: true }, { k: 'hub_id', label: 'Show on kiosk at', type: 'select', options: v => opts(A.ref.hubs, v, 'All hubs') }] });
-  $('aout').insertAdjacentHTML('afterbegin', '<div class="note" style="margin-bottom:12px">These appear as quick-tap options on the kiosk. Visitors can always type a different area.</div>');
+  const group = (title, sub, hubId) => {
+    const list = A.ref.comms.filter(c => (c.hub_id || null) === hubId).sort((a, b) => a.name.localeCompare(b.name));
+    const hub = hubId ? byId(A.ref.hubs, hubId) : null;
+    return `<div class="card"><h3>${esc(title)}</h3><div class="sub">${sub}</div>
+      <div class="addchips">${hub && hub.town ? `<span class="chip" title="Added automatically">${esc(hub.town)} <span class="faint">(Hub's town)</span></span>` : ''}
+        ${list.map(c => `<span class="chip">${esc(c.name)} <button class="chipx" data-delcomm="${c.id}" title="Remove">×</button></span>`).join('')}</div>
+      <div class="row" style="margin-top:10px;flex-wrap:nowrap"><input class="i" style="flex:1" data-newcomm="${hubId || ''}" placeholder="Add a community or area, e.g. Kommetjie"><button class="btn sm" data-addcomm="${hubId || ''}">Add</button></div></div>`;
+  };
+  $('aout').innerHTML = `<div class="note" style="margin-bottom:12px"><b>Where visitors live.</b> These are the quick-tap answers to <i>"Where do you live?"</i> on each Hub's kiosk, and they feed the <b>Community reach</b> figures in the dashboard and donor reports.
+      Each kiosk always includes its own Hub's town, and visitors can tap <i>Somewhere else</i> to type a different area.</div>
+    <div class="grid g2">${A.ref.hubs.map(h => group(h.name, `${esc([h.town, nameOf(A.ref.regions, h.region_id, '')].filter(Boolean).join(', ') || 'No town set')} · shown on this Hub's kiosk`, h.id)).join('')}
+      ${group('All Hubs', 'Shown on every Hub\'s kiosk', null)}</div>`;
+  document.querySelectorAll('[data-addcomm]').forEach(b => b.onclick = async () => {
+    const inp = document.querySelector(`[data-newcomm="${b.dataset.addcomm}"]`); const n = inp.value.trim(); if (!n) return;
+    try { await q(sb.from('communities').insert({ org_id: A.m.org_id, hub_id: b.dataset.addcomm || null, name: n })); toast(n + ' added'); await reload(); } catch (e) { fail(e); }
+  });
+  document.querySelectorAll('[data-newcomm]').forEach(inp => inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector(`[data-addcomm="${inp.dataset.newcomm}"]`).click(); } }));
+  document.querySelectorAll('[data-delcomm]').forEach(b => b.onclick = async () => { try { await q(sb.from('communities').delete().eq('id', b.dataset.delcomm)); await reload(); } catch (e) { fail(e); } });
 }
 
 async function aSettings() {
