@@ -1580,12 +1580,19 @@ function hubForm(h) {
 }
 const hubInitials = n => (n || 'H').split(/\s+/).filter(x => /^[A-Za-z]/.test(x) && !/^(of|the|and|community|hub)$/i.test(x)).slice(0, 2).map(x => x[0]).join('').toUpperCase() || 'H';
 
+const EMOJIS = ['💼','📄','🪪','🏛️','⚖️','🏥','💊','🩺','🧠','❤️','🍲','🥫','🍞','🌱','🚜','💧','🏠','🛏️','👶','🧒','👩‍👧','👵','♿','🎓','📚','✏️','💻','📱','🌐','🖨️','📞','✉️','💰','🏦','🧾','🛠️','🔧','🧵','🚌','🚗','🤝','🗣️','🙋','🛡️','🚨','🧑‍⚖️','⚽','🎨','🎵','⭐','✅','📍'];
+function emojiField(k, v) {
+  return `<div class="row" style="gap:8px;align-items:center"><input class="i" data-k="${k}" value="${esc(v || '')}" maxlength="8" style="width:70px;font-size:22px;text-align:center" placeholder="—">
+    <button type="button" class="btn sm sec" onclick="this.parentNode.querySelector('input').value=''">Clear</button></div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;max-height:150px;overflow-y:auto">${EMOJIS.map(e => `<button type="button" title="Use ${e}" style="font-size:22px;width:40px;height:40px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer" onclick="this.closest('.fld').querySelector('input[data-k=&quot;${k}&quot;]').value='${e}'">${e}</button>`).join('')}</div>`;
+}
 function simpleCrud({ table, title, rows, cols, render, fields, defaults = {}, allowDelete }) {
   $('aout').innerHTML = `<div class="row" style="justify-content:flex-end;margin-bottom:12px"><button class="btn" id="addRow">+ Add ${title}</button></div>
     ${tbl([...cols, ''], rows.map(r => `<tr>${render(r).map(c => `<td>${c}</td>`).join('')}<td style="white-space:nowrap"><button class="btn sm sec" data-e="${r.id}">Edit</button>${allowDelete ? ` <button class="btn sm danger" data-d="${r.id}">Delete</button>` : ''}</td></tr>`))}`;
   const form = r => modal((r.id ? 'Edit ' : 'Add ') + title, `<div class="fld">${fields.map(f => fld(f.label,
       f.type === 'select' ? `<select class="i" data-k="${f.k}">${f.options(r[f.k])}</select>` :
       f.type === 'textarea' ? `<textarea class="i" data-k="${f.k}">${esc(r[f.k] || '')}</textarea>` :
+      f.type === 'emoji' ? emojiField(f.k, r[f.k]) :
       f.type === 'bool' ? `<select class="i" data-k="${f.k}" data-bool>${opts([{ id: 'true', name: f.yes || 'Active' }, { id: 'false', name: f.no || 'Inactive' }], String(r[f.k] !== false))}</select>` :
       `<input class="i" data-k="${f.k}" type="${f.type || 'text'}" value="${esc(r[f.k] == null ? '' : r[f.k])}">`)).join('')}</div>`,
     { save: async w => {
@@ -1628,7 +1635,7 @@ async function aRegions() {
 async function aServices() {
   simpleCrud({ table: 'service_categories', title: 'service category', rows: A.ref.cats, cols: ['', 'Category', 'Examples (shown on kiosk)', 'Order', 'Status'],
     render: c => [esc(c.icon || ''), `<b>${esc(c.name)}</b>`, esc(c.examples || ''), c.sort_order, activeBadge(c.active)],
-    fields: [{ k: 'name', label: 'Category name', req: true }, { k: 'icon', label: 'Icon (an emoji, e.g. 💼)' }, { k: 'examples', label: 'Examples', type: 'textarea' }, { k: 'sort_order', label: 'Display order', type: 'number' }, { k: 'active', label: 'Status', type: 'bool' }] });
+    fields: [{ k: 'name', label: 'Category name', req: true }, { k: 'icon', label: 'Icon — tap one below', type: 'emoji' }, { k: 'examples', label: 'Examples', type: 'textarea' }, { k: 'sort_order', label: 'Display order', type: 'number' }, { k: 'active', label: 'Status', type: 'bool' }] });
   $('aout').insertAdjacentHTML('beforeend', '<div class="note" style="margin-top:12px">Deactivate a category instead of deleting it, so historical reports stay intact. Choose which Hubs offer each service under <b>Hubs & kiosks → Edit</b>.</div>');
 }
 async function aProgrammes() {
