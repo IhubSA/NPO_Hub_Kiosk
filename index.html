@@ -815,8 +815,9 @@ function walkIn() {
    VISITORS
    ===================================================================== */
 async function vVisitors() {
-  $('tools').innerHTML = `<input class="i" id="vs" placeholder="Search name or mobile…" style="width:260px"><button class="btn" id="walkin2">+ Add a visitor</button>`;
+  $('tools').innerHTML = `<input class="i" id="vs" placeholder="Search name or mobile…" style="width:260px"><button class="btn sec" id="vxls">⬇ Download Excel</button><button class="btn" id="walkin2">+ Add a visitor</button>`;
   $('walkin2').onclick = () => walkIn();
+  $('vxls').onclick = () => downloadVisitors($('vs').value.trim().replace(/[,()*%]/g, ' ').trim()).catch(fail);
   const run = async () => {
     const term = $('vs').value.trim().replace(/[,()*%]/g, ' ').trim();
     let qq = sb.from('visitors').select('id, full_name, mobile, community, age_group, gender, is_minor, created_at, last_visit_at, anonymised_at, first_hub_id, visits(count)')
@@ -835,6 +836,48 @@ async function vVisitors() {
   };
   let tm; $('vs').oninput = () => { clearTimeout(tm); tm = setTimeout(() => run().catch(fail), 300); };
   await run();
+}
+
+async function downloadVisitors(term) {
+  const btn = $('vxls'); btn.disabled = true; const label = btn.textContent; btn.textContent = 'Preparing…';
+  try {
+    const all = [];
+    for (let from = 0; ; from += 1000) {
+      let qq = sb.from('visitors').select('full_name, mobile, email, community, age_group, gender, is_minor, guardian_consent, consent_at, consent_version, created_at, last_visit_at, anonymised_at, first_hub_id, visits(count)')
+        .eq('org_id', A.m.org_id).order('full_name').range(from, from + 999);
+      if (term) qq = qq.or(`full_name.ilike.*${term}*,mobile.ilike.*${term.replace(/\D/g, '') || term}*`);
+      const rows = await q(qq); all.push(...rows); if (rows.length < 1000) break;
+    }
+    if (!all.length) { toast('No visitors to download', true); return; }
+    const d = x => x ? new Date(x) : '';
+    const head = ['Name', 'Mobile', 'Email', 'Community', 'Age group', 'Gender', 'Under 18', 'Guardian consent', 'First Hub', 'Visits', 'First seen', 'Last visit', 'Consent given', 'Privacy notice version', 'Status'];
+    const body = all.map(r => {
+      const anon = !!r.anonymised_at;
+      return [r.full_name, anon ? '' : (r.mobile || ''), anon ? '' : (r.email || ''), r.community || '', r.age_group || '', r.gender || '',
+        r.is_minor ? 'Yes' : 'No', r.is_minor ? (r.guardian_consent ? 'Yes' : 'No') : '', r.first_hub_id ? nameOf(A.ref.hubs, r.first_hub_id) : '',
+        (r.visits && r.visits[0] && r.visits[0].count) || 0, d(r.created_at), d(r.last_visit_at), d(r.consent_at), r.consent_version || '',
+        anon ? 'Anonymised ' + fmtDate(r.anonymised_at) : 'Active'];
+    });
+    const ws = XLSX.utils.aoa_to_sheet([head, ...body], { cellDates: true });
+    const dateCols = [10, 11, 12];
+    for (let i = 1; i <= body.length; i++) dateCols.forEach(c => { const a = XLSX.utils.encode_cell({ r: i, c }); if (ws[a] && ws[a].t === 'd') ws[a].z = 'yyyy-mm-dd'; });
+    for (let i = 1; i <= body.length; i++) { const a = XLSX.utils.encode_cell({ r: i, c: 1 }); if (ws[a]) { ws[a].t = 's'; ws[a].z = '@'; } }
+    ws['!cols'] = [28, 13, 26, 18, 11, 12, 9, 10, 26, 7, 12, 12, 12, 14, 18].map(w => ({ wch: w }));
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: body.length, c: head.length - 1 } }) };
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+    const info = XLSX.utils.aoa_to_sheet([
+      ['Visitor list'], ['Organisation', (A.ref.org && A.ref.org.name) || ''], ['Downloaded', new Date().toLocaleString('en-ZA')], ['Downloaded by', A.m.full_name || ''],
+      ['Filter', term || 'All visitors you have access to'], ['Visitors', body.length], [],
+      ['CONFIDENTIAL — contains personal information protected by POPIA.'],
+      ['Store securely, share only with authorised staff, and delete when no longer needed. This download has been recorded in the audit log.']]);
+    info['!cols'] = [{ wch: 18 }, { wch: 60 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Visitors');
+    XLSX.utils.book_append_sheet(wb, info, 'About this file');
+    await q(sb.rpc('log_export', { p_org: A.m.org_id, p_entity: 'visitors', p_count: body.length, p_filter: term || null }));
+    XLSX.writeFile(wb, `CIMP visitors ${new Date().toISOString().slice(0, 10)}${term ? ' - ' + term.replace(/[^\w ]/g, '').slice(0, 30) : ''}.xlsx`);
+    toast(`Downloaded ${body.length} visitor${body.length === 1 ? '' : 's'}`);
+  } finally { btn.disabled = false; btn.textContent = label; }
 }
 
 async function openVisitor(id) {
